@@ -9,11 +9,13 @@
   },
   "action": {
     "default_title": "Click to open side panel tabs",
-    "default_icon": "./sources/tab16.png"
+    "default_icon": "./sources/tabs256.png"
   },
   "icons": {
     "16": "sources/tab16.png",
-    "48": "sources/tab48.png"
+    "48": "sources/tab48.png",
+    "128": "sources/tabs128.png",
+    "256": "sources/tabs256.png"
   },
   "background": {
     "service_worker": "background.js"
