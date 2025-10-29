@@ -69,68 +69,65 @@
     }
   }
 
-  .tab-list-container {
+  .tab-list {
     overflow: hidden;
     margin: 0;
     padding: 0;
-    max-height: 400px; // 限制最大高度，避免单个分组占用过多空间
 
-    .tab-list {
-      .tab-item {
-        list-style: none;
+    li {
+      list-style: none;
+      height: @variable-height-normal;
+      border: 1px solid transparent;
+      padding-left: 32px;
+      display: flex;
+      align-items: center;
+      padding-right: 0;
+      text-wrap: nowrap;
+      color: var(--font-color);
+      position: relative;
+      cursor: pointer;
+
+      .left-title {
+        flex-grow: 1;
         height: @variable-height-normal;
-        border: 1px solid transparent;
-        padding-left: 32px;
+        line-height: @variable-height-normal;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .right-actions {
+        flex-shrink: 0;
+        height: @variable-height-normal;
         display: flex;
         align-items: center;
-        padding-right: 0;
-        text-wrap: nowrap;
-        color: var(--font-color);
-        position: relative;
-        cursor: pointer;
-
-        .left-title {
-          flex-grow: 1;
-          height: @variable-height-normal;
-          line-height: @variable-height-normal;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-        .right-actions {
-          flex-shrink: 0;
-          height: @variable-height-normal;
-          display: flex;
-          align-items: center;
-          button {
-            border: 0;
-            background-color: transparent;
-            width: 32px;
-            height: 32px;
-            color: var(--font-color);
-            cursor: pointer;
-            text-align: center;
-            border: 1px solid transparent;
-            border-radius: 3px;
+        button {
+          border: 0;
+          background-color: transparent;
+          width: 32px;
+          height: 32px;
+          color: var(--font-color);
+          cursor: pointer;
+          text-align: center;
+          border: 1px solid transparent;
+          border-radius: 3px;
+          i {
+            transition: all 0.3s;
+            display: inline-block;
+          }
+          &:hover {
             i {
-              transition: all 0.3s;
-              display: inline-block;
-            }
-            &:hover {
-              i {
-                transform: rotate(90deg) scale(1.2);
-              }
+              transform: rotate(90deg) scale(1.2);
             }
           }
         }
-        &:hover {
-          background-color: var(--tab-hover-color);
-        }
-        &.active {
-          background-color: rgb(241, 222, 198);
-          // border: 1px solid var(--font-color);
-          // border-radius: 3px;
-        }
+      }
+      &:hover {
+        background-color: var(--tab-hover-color);
+      }
+      &.active {
+        background-color: rgb(241, 222, 198);
+        // border: 1px solid var(--font-color);
+        // border-radius: 3px;
       }
     }
   }
@@ -248,7 +245,7 @@
           color: var(--font-color);
           cursor: pointer;
           border-radius: 3px;
-          opacity: 0;
+          opacity: 1;
           transition: opacity 0.2s;
 
           &:hover {
@@ -268,10 +265,6 @@
 
       &:hover {
         background-color: var(--domain-hover-color);
-
-        .group-actions button {
-          opacity: 1;
-        }
       }
     }
 
@@ -281,6 +274,7 @@
       padding: 0;
 
       li {
+        display: flex;
         list-style: none;
         height: @variable-height-normal;
         border: 1px solid transparent;
@@ -319,22 +313,17 @@
             text-align: center;
             border: 1px solid transparent;
             border-radius: 3px;
-            opacity: 0;
+            opacity: 1;
             transition: all 0.2s;
 
             &:hover {
               background-color: var(--button-hover-bg-color);
-              opacity: 1;
             }
           }
         }
 
         &:hover {
           background-color: var(--tab-hover-color);
-
-          .right-actions button {
-            opacity: 1;
-          }
         }
 
         &.active {
