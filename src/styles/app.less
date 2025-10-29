@@ -11,12 +11,14 @@
     width: 3px;
   }
 }
+
 .favicon {
   margin-right: 8px;
   width: 16px;
   height: 16px;
   object-fit: cover;
 }
+
 .domain-panel {
   color: var(--font-color);
 
@@ -66,89 +68,74 @@
       font-size: 12px;
     }
   }
-  ul.tab-list {
+
+  .tab-list-container {
     overflow: hidden;
     margin: 0;
     padding: 0;
+    max-height: 400px; // 限制最大高度，避免单个分组占用过多空间
 
-    li {
-      list-style: none;
-      height: @variable-height-normal;
-      border: 1px solid transparent;
-      padding-left: 32px;
-      display: flex;
-      align-items: center;
-      padding-right: 0;
-      text-wrap: nowrap;
-      color: var(--font-color);
-      position: relative;
-      cursor: pointer;
-
-      // &:before {
-      //   position: absolute;
-      //   display: inline-block;
-      //   width: 1px;
-      //   height: calc(100% + 2px);
-      //   left: 19px;
-      //   top: -1px;
-      //   background-color: var(--font-color);
-      //   content: " ";
-      // }
-      // &:after {
-      //   position: absolute;
-      //   display: inline-block;
-      //   width: 10px;
-      //   height: 1px;
-      //   left: 20px;
-      //   top: 15px;
-      //   background-color: var(--font-color);
-      //   content: " ";
-      // }
-      .left-title {
-        flex-grow: 1;
+    .tab-list {
+      .tab-item {
+        list-style: none;
         height: @variable-height-normal;
-        line-height: @variable-height-normal;
-        word-wrap: break-word;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-      .right-actions {
-        flex-shrink: 0;
-        height: @variable-height-normal;
+        border: 1px solid transparent;
+        padding-left: 32px;
         display: flex;
         align-items: center;
-        button {
-          border: 0;
-          background-color: transparent;
-          width: 32px;
-          height: 32px;
-          color: var(--font-color);
-          cursor: pointer;
-          text-align: center;
-          border: 1px solid transparent;
-          border-radius: 3px;
-          i {
-            transition: all 0.3s;
-            display: inline-block;
-          }
-          &:hover {
+        padding-right: 0;
+        text-wrap: nowrap;
+        color: var(--font-color);
+        position: relative;
+        cursor: pointer;
+
+        .left-title {
+          flex-grow: 1;
+          height: @variable-height-normal;
+          line-height: @variable-height-normal;
+          word-wrap: break-word;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .right-actions {
+          flex-shrink: 0;
+          height: @variable-height-normal;
+          display: flex;
+          align-items: center;
+          button {
+            border: 0;
+            background-color: transparent;
+            width: 32px;
+            height: 32px;
+            color: var(--font-color);
+            cursor: pointer;
+            text-align: center;
+            border: 1px solid transparent;
+            border-radius: 3px;
             i {
-              transform: rotate(90deg) scale(1.2);
+              transition: all 0.3s;
+              display: inline-block;
+            }
+            &:hover {
+              i {
+                transform: rotate(90deg) scale(1.2);
+              }
             }
           }
         }
-      }
-      &:hover {
-        background-color: var(--tab-hover-color);
-      }
-      &.active {
-        background-color: rgb(241, 222, 198);
-        // border: 1px solid var(--font-color);
-        // border-radius: 3px;
+        &:hover {
+          background-color: var(--tab-hover-color);
+        }
+        &.active {
+          background-color: rgb(241, 222, 198);
+          // border: 1px solid var(--font-color);
+          // border-radius: 3px;
+        }
       }
     }
   }
+
   &.active {
     .domain-title {
       .right-arrow {
@@ -156,5 +143,268 @@
         margin-top: -14px;
       }
     }
+  }
+}
+
+// 优化动画性能
+.slide-down-enter-active,
+.slide-down-leave-active {
+  transition: all 0.3s ease;
+  will-change: height, opacity;
+}
+
+.slide-down-enter-from,
+.slide-down-leave-to {
+  height: 0;
+  opacity: 0;
+}
+
+.slide-down-enter-to,
+.slide-down-leave-from {
+  height: auto;
+  opacity: 1;
+}
+
+// 自定义分组样式
+.custom-groups {
+  overflow-x: hidden;
+  height: 100%;
+  padding-bottom: var(--footer-bar-height);
+
+  .custom-groups-header {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-color);
+
+    .create-group-btn {
+      width: 100%;
+      padding: 8px 12px;
+      background-color: var(--button-bg-color);
+      color: var(--font-color);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 14px;
+
+      &:hover {
+        background-color: var(--button-hover-bg-color);
+      }
+    }
+  }
+
+  .custom-group-panel {
+    color: var(--font-color);
+
+    .group-title {
+      height: 32px;
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      background-repeat: no-repeat;
+      padding-left: 12px;
+      padding-right: 26px;
+      cursor: pointer;
+      position: relative;
+
+      .group-color {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 8px;
+        border: 1px solid var(--border-color);
+      }
+
+      .title {
+        padding-left: 5px;
+        flex-grow: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-weight: 500;
+      }
+
+      .count {
+        flex-shrink: 0;
+        font-weight: 500;
+        font-size: 12px;
+        color: var(--secondary-font-color);
+      }
+
+      .group-actions {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        margin-left: 8px;
+
+        button {
+          border: 0;
+          background-color: transparent;
+          width: 24px;
+          height: 24px;
+          color: var(--font-color);
+          cursor: pointer;
+          border-radius: 3px;
+          opacity: 0;
+          transition: opacity 0.2s;
+
+          &:hover {
+            background-color: var(--button-hover-bg-color);
+          }
+        }
+
+        .right-arrow {
+          position: absolute;
+          right: 8px;
+          top: 50%;
+          margin-top: -6px;
+          transition: all 0.3s;
+          font-size: 12px;
+        }
+      }
+
+      &:hover {
+        background-color: var(--domain-hover-color);
+
+        .group-actions button {
+          opacity: 1;
+        }
+      }
+    }
+
+    ul.tab-list {
+      overflow: hidden;
+      margin: 0;
+      padding: 0;
+
+      li {
+        list-style: none;
+        height: @variable-height-normal;
+        border: 1px solid transparent;
+        padding-left: 32px;
+        display: flex;
+        align-items: center;
+        padding-right: 0;
+        text-wrap: nowrap;
+        color: var(--font-color);
+        position: relative;
+        cursor: pointer;
+
+        .left-title {
+          flex-grow: 1;
+          height: @variable-height-normal;
+          line-height: @variable-height-normal;
+          word-wrap: break-word;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .right-actions {
+          flex-shrink: 0;
+          height: @variable-height-normal;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+
+          button {
+            border: 0;
+            background-color: transparent;
+            width: 24px;
+            height: 24px;
+            color: var(--font-color);
+            cursor: pointer;
+            text-align: center;
+            border: 1px solid transparent;
+            border-radius: 3px;
+            opacity: 0;
+            transition: all 0.2s;
+
+            &:hover {
+              background-color: var(--button-hover-bg-color);
+              opacity: 1;
+            }
+          }
+        }
+
+        &:hover {
+          background-color: var(--tab-hover-color);
+
+          .right-actions button {
+            opacity: 1;
+          }
+        }
+
+        &.active {
+          background-color: var(--tab-active-bg-color);
+        }
+
+        &.empty-group {
+          height: 40px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: var(--secondary-font-color);
+          font-style: italic;
+          cursor: default;
+
+          &:hover {
+            background-color: transparent;
+          }
+        }
+      }
+    }
+
+    &.active {
+      .group-title {
+        .right-arrow {
+          transform: rotateZ(180deg) translateY(-50%);
+          margin-top: -14px;
+        }
+      }
+    }
+  }
+}
+
+// 拖拽相关样式
+[draggable="true"] {
+  cursor: grab;
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.custom-group-panel {
+  &.drag-over {
+    .group-title {
+      background-color: var(--domain-hover-color);
+      box-shadow: 0 0 0 2px var(--border-color);
+    }
+  }
+
+  .group-title.drag-over {
+    background-color: var(--domain-hover-color);
+    box-shadow: 0 0 0 2px var(--border-color);
+  }
+
+  ul.tab-list.drag-over {
+    background-color: var(--tab-hover-color);
+    min-height: 40px;
+    border: 2px dashed var(--border-color);
+  }
+}
+
+// 拖拽元素样式
+li[draggable="true"] {
+  transition: all 0.2s ease;
+
+  &.dragging {
+    opacity: 0.5;
+    transform: scale(0.95);
   }
 }

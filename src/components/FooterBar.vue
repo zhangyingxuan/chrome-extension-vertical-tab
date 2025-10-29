@@ -15,6 +15,10 @@
           <i v-if="uiTheme === 'light'" class="iconfont icon-moon"></i>
           <i v-if="uiTheme === 'dark'" class="iconfont icon-sun"></i>
         </button>
+        <button title="切换分组模式" @click="handleSwitchGroupType">
+          <i v-if="groupType === 'domain'" class="iconfont icon-moon"></i>
+          <i v-if="groupType === 'custom'" class="iconfont icon-sun"></i>
+        </button>
       </div>
     </div>
     <div class="search-area">
@@ -37,40 +41,59 @@
 </template>
 
 <script lang="ts" setup>
-import { onMounted, reactive, ref } from 'vue';
-const emits = defineEmits(['change']);
+import { onMounted, reactive, ref } from "vue";
+import { themeStoreKey, groupTypeStoreKey } from "../config";
+const emits = defineEmits(["change", "changeGroupType"]);
 
 const searchData = reactive({
-  keywords: ''
+  keywords: "",
 });
-const uiTheme = ref('light');
-const themeStoreKey = 'aitab-theme';
+const uiTheme = ref("light");
+const groupType = ref("domain");
 
 const handleSearch = () => {
-  emits('change', searchData);
+  emits("change", searchData);
 };
 async function handleNewTab() {
   await chrome.tabs.create({});
 }
+
+/**
+ * 切换分组类型，域名分组/自定义分组
+ */
+async function handleSwitchGroupType() {
+  const newGroupType = groupType.value === "domain" ? "custom" : "domain";
+  chrome.storage.local.set({ [groupTypeStoreKey]: newGroupType });
+  groupType.value = newGroupType;
+  emits("changeGroupType", newGroupType);
+}
+
 async function handleSwitchTheme() {
-  const theme = document.querySelector('html')?.getAttribute('theme');
-  const newTheme = theme === 'dark' ? 'light' : 'dark';
-  document.querySelector('html')?.setAttribute('theme', newTheme);
+  const theme = document.querySelector("html")?.getAttribute("theme");
+  const newTheme = theme === "dark" ? "light" : "dark";
+  document.querySelector("html")?.setAttribute("theme", newTheme);
   chrome.storage.local.set({ [themeStoreKey]: newTheme });
 }
 
 const initTheme = async () => {
   const obj = await chrome.storage.local.get(themeStoreKey);
   const th = obj[themeStoreKey];
-  document.querySelector('html')?.setAttribute('theme', th || 'light');
-  uiTheme.value = th || 'light';
+  document.querySelector("html")?.setAttribute("theme", th || "light");
+  uiTheme.value = th || "light";
+};
+
+const initGroupType = async () => {
+  const obj = await chrome.storage.local.get(groupTypeStoreKey);
+  const gt = obj[groupTypeStoreKey];
+  groupType.value = gt || "domain";
 };
 
 const handleSetting = () => {
   chrome.tabs.create({
-    url: 'chrome://settings/appearance'
+    url: "chrome://settings/appearance",
   });
 };
+
 onMounted(() => {
   chrome.storage.onChanged.addListener((changes) => {
     if (changes[themeStoreKey]) {
@@ -78,6 +101,7 @@ onMounted(() => {
     }
   });
   initTheme();
+  initGroupType();
 });
 </script>
 
