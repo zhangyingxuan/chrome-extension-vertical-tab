@@ -133,7 +133,7 @@ footer {
       cursor: pointer;
       color: var(--font-color);
       &:hover {
-        box-shadow: 0 0 3px #999 inset;
+        box-shadow: 0 0 3px var(--border-color) inset;
       }
     }
   }
@@ -143,7 +143,7 @@ footer {
 
     .input-group {
       position: relative;
-      border-top: 1px solid #ddd;
+      border-top: 1px solid var(--border-color);
       display: flex;
       input {
         border: 0;

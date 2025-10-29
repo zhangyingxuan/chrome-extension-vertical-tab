@@ -16,7 +16,7 @@
           srcset=""
         />
         <p class="title">{{ item.domain }}</p>
-        <p class="count"> ({{ item?.tabs?.length }})</p>
+        <p class="count">({{ item?.tabs?.length }})</p>
         <i class="right-arrow iconfont icon-arrow-down"></i>
       </h3>
       <transition name="slide-down">
@@ -66,7 +66,7 @@
           :style="{ backgroundColor: getGroupColor(group.color) }"
         ></div>
         <p class="title">{{ group.title || "未命名分组" }}</p>
-        <p class="count"> ({{ group.tabs?.length }})</p>
+        <p class="count">({{ group.tabs?.length }})</p>
         <i
           class="right-arrow iconfont"
           :class="group.collapsed ? 'icon-arrow-right' : 'icon-arrow-down'"
@@ -103,7 +103,7 @@
       <h3 class="group-title">
         <div class="group-color" style="background-color: #999"></div>
         <p class="title">未分组</p>
-        <p class="count"> ({{ ungroupedTabs.length }})</p>
+        <p class="count">({{ ungroupedTabs.length }})</p>
       </h3>
       <ul class="tab-list">
         <li
@@ -658,7 +658,7 @@ onUnmounted(() => {
   border-bottom: 1px solid var(--border-color);
 
   &.active {
-    background-color: var(--bg-color-active);
+    background-color: var(--domain-hover-color);
   }
 
   &.collapsed {
@@ -678,7 +678,7 @@ onUnmounted(() => {
   border-bottom: 1px solid transparent;
 
   &:hover {
-    background-color: var(--bg-color-hover);
+    background-color: var(--domain-hover-color);
   }
 
   .group-color {
@@ -700,12 +700,12 @@ onUnmounted(() => {
   .count {
     margin: 0;
     font-size: 12px;
-    color: var(--color-text-secondary);
+    color: var(--secondary-font-color);
   }
 
   .right-arrow {
     font-size: 12px;
-    color: var(--color-text-secondary);
+    color: var(--secondary-font-color);
     transition: transform 0.2s;
   }
 }
@@ -731,7 +731,7 @@ onUnmounted(() => {
     color: var(--font-color);
 
     &:hover {
-      background-color: var(--bg-color-hover);
+      background-color: var(--domain-hover-color);
     }
   }
 }
@@ -771,12 +771,12 @@ onUnmounted(() => {
       padding: 8px 12px;
       border: 1px solid var(--border-color);
       border-radius: 4px;
-      background: var(--bg-color-input);
+      background: var(--bg-color);
       color: var(--font-color);
 
       &:focus {
         outline: none;
-        border-color: var(--color-primary);
+        border-color: var(--border-color);
       }
     }
 
@@ -797,7 +797,7 @@ onUnmounted(() => {
       text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.5);
 
       &.active {
-        border-color: var(--color-primary);
+        border-color: var(--border-color);
       }
 
       &:hover {
@@ -820,9 +820,9 @@ onUnmounted(() => {
       cursor: pointer;
 
       &:last-child {
-        background: var(--color-primary);
-        color: white;
-        border-color: var(--color-primary);
+        background: var(--button-bg-color);
+        color: var(--font-color);
+        border-color: var(--border-color);
       }
 
       &:hover {
