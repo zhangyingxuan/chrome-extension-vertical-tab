@@ -16,8 +16,8 @@
           <i v-if="uiTheme === 'dark'" class="iconfont icon-sun"></i>
         </button>
         <button title="切换分组模式" @click="handleSwitchGroupType">
-          <i v-if="groupType === 'domain'" class="iconfont icon-moon"></i>
-          <i v-if="groupType === 'custom'" class="iconfont icon-sun"></i>
+          <i v-if="groupType === 'domain'" class="iconfont icon-folder"></i>
+          <i v-if="groupType === 'custom'" class="iconfont icon-group"></i>
         </button>
       </div>
     </div>

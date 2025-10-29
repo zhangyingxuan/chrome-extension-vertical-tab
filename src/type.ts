@@ -7,26 +7,30 @@ export interface ISearchData {
   keywords: string;
 }
 
-// 自定义分组配置
-export interface ICustomGroup {
-  id: string;
-  name: string;
+// 扩展TabGroup接口，支持自定义分组
+export interface ICustomTabGroup {
+  id: number;
+  title: string;
   color: string;
   tabs: chrome.tabs.Tab[];
-  createdAt: number;
-  updatedAt: number;
+  collapsed: boolean;
 }
 
-// 分组类型
-export type GroupType = 'domain' | 'custom';
+// 右键菜单配置
+export interface IContextMenuConfig {
+  groupId?: number;
+  tabId?: number;
+  type: 'group' | 'tab';
+}
 
-// 颜色选项
-export const COLOR_OPTIONS = [
-  '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
-  '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
-  '#F8C471', '#82E0AA', '#F1948A', '#85C1E9', '#D7BDE2'
-];
-
-// 存储键名
-export const CUSTOM_GROUPS_STORE_KEY = 'aitab-custom-groups';
-export const ACTIVE_CUSTOM_GROUP_STORE_KEY = 'aitab-active-custom-group';
+// 分组颜色选项
+export const GROUP_COLORS = [
+  { value: 'grey', label: '灰色' },
+  { value: 'blue', label: '蓝色' },
+  { value: 'red', label: '红色' },
+  { value: 'yellow', label: '黄色' },
+  { value: 'green', label: '绿色' },
+  { value: 'pink', label: '粉色' },
+  { value: 'purple', label: '紫色' },
+  { value: 'cyan', label: '青色' },
+] as const;

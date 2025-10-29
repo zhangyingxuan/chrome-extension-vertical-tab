@@ -49,6 +49,18 @@
   content: "\e60b";
 }
 
+.icon-folder:before {
+  content: "\e60f";
+}
+
+.icon-group:before {
+  content: "\e7ef";
+}
+
+.icon-arrow-right:before {
+  content: "\e665";
+}
+
 /* 自定义分组功能新增图标 */
 .icon-edit:before {
   content: "\e602";
