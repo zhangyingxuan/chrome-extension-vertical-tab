@@ -76,6 +76,15 @@
       color: var(--font-color);
       position: relative;
       cursor: pointer;
+      transition: all 0.2s ease;
+
+      // 拖拽样式
+      &.dragging {
+        opacity: 0.5;
+        background-color: var(--tab-hover-color);
+        border: 1px dashed var(--primary-color);
+        transform: scale(0.98);
+      }
 
       .left-title {
         flex-grow: 1;
@@ -128,6 +137,39 @@
       }
     }
   }
+
+  // 拖拽悬停样式
+  &.drag-over {
+    .domain-title,
+    .group-title {
+      background-color: var(--primary-color-light);
+      border-left: 3px solid var(--primary-color);
+    }
+
+    .tab-list {
+      border: 2px dashed var(--primary-color);
+      border-radius: 4px;
+      margin: 2px;
+      background-color: rgba(var(--primary-color-rgb), 0.05);
+    }
+  }
+}
+
+// 未分组面板特殊样式
+.ungrouped-panel {
+  &.drag-over {
+    .group-title {
+      background-color: var(--primary-color-light);
+      border-left: 3px solid var(--primary-color);
+    }
+
+    .tab-list {
+      border: 2px dashed var(--primary-color);
+      border-radius: 4px;
+      margin: 2px;
+      background-color: rgba(var(--primary-color-rgb), 0.05);
+    }
+  }
 }
 
 // 优化动画性能
@@ -147,4 +189,235 @@
 .slide-down-leave-from {
   height: auto;
   opacity: 1;
+}
+
+// 拖拽动画
+.dragging-transition {
+  transition: all 0.2s ease;
+}
+
+// 拖拽排序相关样式
+.drag-indicator {
+  position: absolute;
+  left: 32px;
+  right: 0;
+  height: 2px;
+  background-color: var(--drag-indicator-color, #4285f4);
+  z-index: 10;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+
+  &.visible {
+    opacity: 1;
+  }
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: -4px;
+    top: -3px;
+    width: 8px;
+    height: 8px;
+    background-color: var(--drag-indicator-color, #4285f4);
+    border-radius: 50%;
+  }
+}
+
+// 分组内拖拽排序样式
+.group-panel {
+  position: relative;
+
+  .tab-list {
+    position: relative;
+
+    li {
+      transition: transform 0.2s ease, background-color 0.2s ease;
+
+      &.dragging {
+        opacity: 0.5;
+        transform: scale(0.95);
+        z-index: 100;
+      }
+
+      &.drag-target {
+        background-color: var(--drag-target-color, rgba(66, 133, 244, 0.1));
+
+        &::before {
+          content: "";
+          position: absolute;
+          left: 32px;
+          right: 0;
+          top: -1px;
+          height: 2px;
+          background-color: var(--drag-indicator-color, #4285f4);
+          z-index: 5;
+        }
+      }
+
+      &.drag-target-top::before {
+        top: -1px;
+      }
+
+      &.drag-target-bottom::before {
+        top: auto;
+        bottom: -1px;
+      }
+    }
+  }
+}
+
+// 拖拽排序动画
+@keyframes sort-success {
+  0% {
+    background-color: var(--drag-success-color, rgba(52, 168, 83, 0.1));
+  }
+  50% {
+    background-color: var(--drag-success-color, rgba(52, 168, 83, 0.3));
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.sort-success {
+  animation: sort-success 0.5s ease;
+}
+
+// 拖拽排序错误反馈
+@keyframes sort-error {
+  0%,
+  100% {
+    background-color: transparent;
+  }
+  50% {
+    background-color: var(--drag-error-color, rgba(234, 67, 53, 0.2));
+  }
+}
+
+.sort-error {
+  animation: sort-error 0.5s ease;
+}
+
+// 拖拽占位符
+.drag-placeholder {
+  height: 32px;
+  background-color: var(--drag-placeholder-color, rgba(66, 133, 244, 0.1));
+  border: 1px dashed var(--drag-indicator-color, #4285f4);
+  border-radius: 3px;
+  margin: 2px 0;
+  opacity: 0.7;
+}
+
+// 拖拽成功反馈样式
+.drag-success {
+  animation: dragSuccess 0.5s ease-in-out;
+
+  .group-title {
+    background-color: var(--primary-color-light);
+    border-left: 3px solid var(--primary-color);
+  }
+
+  .tab-list {
+    border: 2px solid var(--primary-color);
+    border-radius: 4px;
+    margin: 2px;
+    background-color: rgba(var(--primary-color-rgb), 0.1);
+  }
+}
+
+// 拖拽错误反馈样式
+.drag-error {
+  animation: dragError 1s ease-in-out;
+
+  .group-title {
+    background-color: rgba(244, 67, 54, 0.1);
+    border-left: 3px solid #f44336;
+  }
+
+  .tab-list {
+    border: 2px solid #f44336;
+    border-radius: 4px;
+    margin: 2px;
+    background-color: rgba(244, 67, 54, 0.05);
+  }
+}
+
+// 拖拽成功动画
+@keyframes dragSuccess {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+// 拖拽错误动画
+@keyframes dragError {
+  0%,
+  100% {
+    background-color: transparent;
+  }
+  25%,
+  75% {
+    background-color: rgba(244, 67, 54, 0.1);
+  }
+}
+
+// 拖拽提示样式
+.drag-hint {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: var(--primary-color);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 12px;
+  z-index: 1000;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+
+  &.show {
+    opacity: 1;
+  }
+}
+
+// 拖拽时的标签页样式优化
+.tab-list li {
+  &.dragging {
+    position: relative;
+    z-index: 100;
+
+    &::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: var(--primary-color-light);
+      border: 2px dashed var(--primary-color);
+      border-radius: 4px;
+      pointer-events: none;
+    }
+  }
+}
+
+// 拖拽悬停时的分组标题优化
+.group-panel.drag-over .group-title,
+.ungrouped-panel.drag-over .group-title {
+  transition: all 0.2s ease;
+  font-weight: bold;
+
+  .group-color {
+    transform: scale(1.2);
+    transition: transform 0.2s ease;
+  }
 }

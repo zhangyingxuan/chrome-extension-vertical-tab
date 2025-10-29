@@ -32,7 +32,7 @@
             :data-favicon="tab.favIconUrl"
             @click="handleClickTab(tab)"
           >
-            <!-- <img class="favicon" :src="tab.favIconUrl" alt="" srcset=""> -->
+            <!-- <img class="favicon" :src="tab.favIconUrl" alt="" srcset="" /> -->
             <div class="left-title" :data-tab-id="tab?.id">
               {{ tab.title }}
             </div>
@@ -57,8 +57,14 @@
       :class="{
         active: activeGroupId === group.id,
         collapsed: group.collapsed,
+        'drag-over': dragOverGroupId === group.id,
       }"
+      :data-group-id="group.id"
       @contextmenu.prevent="handleGroupContextMenu($event, group)"
+      @dragover.prevent="handleDragOver($event, group)"
+      @dragenter.prevent="handleDragEnter($event, group)"
+      @dragleave.prevent="handleDragLeave($event, group)"
+      @drop.prevent="handleDrop($event, group)"
     >
       <h3 class="group-title" @click="() => toggleGroupCollapse(group.id)">
         <div
@@ -82,6 +88,9 @@
             :data-favicon="tab.favIconUrl"
             @click="handleClickTab(tab)"
             @contextmenu.prevent="handleTabContextMenu($event, tab, group)"
+            draggable="true"
+            @dragstart="handleDragStart($event, tab, group)"
+            @dragend="handleDragEnd"
           >
             <div class="left-title" :data-tab-id="tab?.id">
               {{ tab.title }}
@@ -98,10 +107,21 @@
         </ul>
       </transition>
     </div>
-    <!-- 未分组的标签页 -->
-    <div v-if="ungroupedTabs.length > 0" class="group-panel">
+
+    <!-- 未分组标签页区域 -->
+    <div
+      v-if="ungroupedTabs.length > 0"
+      class="group-panel ungrouped-panel"
+      :class="{
+        'drag-over': dragOverGroupId === -1,
+      }"
+      @dragover.prevent="handleDragOver($event, null)"
+      @dragenter.prevent="handleDragEnter($event, null)"
+      @dragleave.prevent="handleDragLeave($event, null)"
+      @drop.prevent="handleDrop($event, null)"
+    >
       <h3 class="group-title">
-        <div class="group-color" style="background-color: #999"></div>
+        <div class="group-color" style="background-color: #ccc"></div>
         <p class="title">未分组</p>
         <p class="count">({{ ungroupedTabs.length }})</p>
       </h3>
@@ -111,8 +131,12 @@
           :key="index"
           :title="tab?.title"
           :class="{ active: tab.id === activeTabId }"
+          :data-favicon="tab.favIconUrl"
           @click="handleClickTab(tab)"
-          @contextmenu.prevent="handleTabContextMenu($event, tab)"
+          @contextmenu.prevent="handleTabContextMenu($event, tab, undefined)"
+          draggable="true"
+          @dragstart="handleDragStart($event, tab, null)"
+          @dragend="handleDragEnd"
         >
           <div class="left-title" :data-tab-id="tab?.id">
             {{ tab.title }}
@@ -226,6 +250,13 @@ const newGroupTitle = ref("");
 const selectedColor = ref("grey");
 const currentGroupId = ref<number | null>(null);
 
+// 拖拽相关状态
+const dragData = ref<{
+  tab: chrome.tabs.Tab;
+  sourceGroup: ICustomTabGroup | null;
+} | null>(null);
+const dragOverGroupId = ref<number | null>(null);
+
 function handleGroupTypeChange(type: string) {
   groupType.value = type;
   getAllTabs();
@@ -322,10 +353,22 @@ const getGroupColor = (color: string): string => {
   return colorMap[color] || "#999";
 };
 
-const toggleGroupCollapse = (groupId: number) => {
+const toggleGroupCollapse = async (groupId: number) => {
   const group = customTabGroups.value.find((g) => g.id === groupId);
   if (group) {
-    group.collapsed = !group.collapsed;
+    const newCollapsedState = !group.collapsed;
+    group.collapsed = newCollapsedState;
+
+    // 同步更新Chrome tabGroups的collapsed状态
+    try {
+      await chrome.tabGroups.update(groupId, {
+        collapsed: newCollapsedState,
+      });
+    } catch (error) {
+      console.error("更新分组折叠状态失败:", error);
+      // 如果更新失败，恢复本地状态
+      group.collapsed = !newCollapsedState;
+    }
   }
 };
 
@@ -436,6 +479,324 @@ const handleCloseTabFromMenu = async () => {
   }
 };
 
+// 拖拽开始
+const handleDragStart = (
+  event: DragEvent,
+  tab: chrome.tabs.Tab,
+  group: ICustomTabGroup | null
+) => {
+  if (!tab.id) return;
+
+  dragData.value = {
+    tab,
+    sourceGroup: group,
+  };
+
+  // 设置拖拽数据
+  event.dataTransfer?.setData("text/plain", tab.id.toString());
+  event.dataTransfer!.effectAllowed = "move";
+
+  // 添加拖拽样式
+  if (event.target) {
+    (event.target as HTMLElement).classList.add("dragging");
+  }
+
+  // 设置拖拽图像
+  if (event.dataTransfer && event.target) {
+    const dragElement = event.target as HTMLElement;
+    const rect = dragElement.getBoundingClientRect();
+    event.dataTransfer.setDragImage(
+      dragElement,
+      rect.width / 2,
+      rect.height / 2
+    );
+  }
+};
+
+// 拖拽结束
+const handleDragEnd = (event: DragEvent) => {
+  dragData.value = null;
+  dragOverGroupId.value = null;
+
+  // 移除拖拽样式
+  if (event.target) {
+    (event.target as HTMLElement).classList.remove("dragging");
+  }
+
+  // 移除所有拖拽相关样式
+  document.querySelectorAll(".drag-over, .dragging").forEach((el) => {
+    el.classList.remove("drag-over", "dragging");
+  });
+};
+
+// 拖拽进入分组区域
+const handleDragEnter = (event: DragEvent, group: ICustomTabGroup | null) => {
+  const groupId = group ? group.id : -1; // -1 表示未分组区域
+  dragOverGroupId.value = groupId;
+
+  // 确保分组展开以便拖拽
+  if (group && group.collapsed) {
+    toggleGroupCollapse(group.id);
+  }
+};
+
+// 拖拽离开分组区域
+const handleDragLeave = (event: DragEvent, group: ICustomTabGroup | null) => {
+  const groupId = group ? group.id : -1;
+
+  // 只有当拖拽离开当前分组时才清除状态
+  const relatedTarget = event.relatedTarget as HTMLElement;
+  if (
+    !relatedTarget ||
+    !relatedTarget.closest(`[data-group-id="${groupId}"]`)
+  ) {
+    dragOverGroupId.value = null;
+  }
+};
+
+// 拖拽在分组区域上移动
+const handleDragOver = (event: DragEvent, group: ICustomTabGroup | null) => {
+  event.preventDefault();
+  const groupId = group ? group.id : -1;
+  dragOverGroupId.value = groupId;
+};
+
+// 拖拽放置
+const handleDrop = async (
+  event: DragEvent,
+  targetGroup: ICustomTabGroup | null
+) => {
+  event.preventDefault();
+
+  if (!dragData.value || !dragData.value.tab.id) {
+    return;
+  }
+
+  const { tab, sourceGroup } = dragData.value;
+  const targetGroupId = targetGroup ? targetGroup.id : -1;
+
+  // 如果源分组和目标分组相同，执行分组内排序
+  if (sourceGroup?.id === targetGroupId) {
+    await handleGroupInternalSort(event, tab, sourceGroup);
+    return;
+  }
+
+  // 如果源分组和目标分组相同，不执行操作
+  if (sourceGroup?.id === targetGroupId) {
+    dragOverGroupId.value = null;
+    return;
+  }
+
+  try {
+    // 使用 Chrome API 将标签页移动到目标分组
+    if (targetGroupId === -1) {
+      // 移动到未分组
+      await chrome.tabs.ungroup(tab.id);
+    } else {
+      // 移动到指定分组
+      await chrome.tabs.group({
+        tabIds: tab.id,
+        groupId: targetGroupId,
+      });
+
+      // 如果目标分组有自定义标题或颜色，同步更新Chrome分组
+      if (
+        targetGroup &&
+        (targetGroup.title !== `分组 ${targetGroupId}` ||
+          targetGroup.color !== "grey")
+      ) {
+        await chrome.tabGroups.update(targetGroupId, {
+          title: targetGroup.title,
+          color: targetGroup.color as chrome.tabGroups.Color,
+        });
+      }
+    }
+
+    // 刷新标签页数据
+    await getAllTabs();
+
+    // 显示操作成功的视觉反馈
+    showDragSuccessFeedback(targetGroupId);
+  } catch (error) {
+    console.error("拖拽移动标签页失败:", error);
+    // 显示错误提示
+    showDragErrorFeedback();
+  } finally {
+    // 重置拖拽状态
+    dragOverGroupId.value = null;
+    dragData.value = null;
+  }
+};
+
+// 显示拖拽成功反馈
+const showDragSuccessFeedback = (targetGroupId: number) => {
+  // 可以添加视觉反馈，比如短暂的背景色变化
+  const targetElement =
+    targetGroupId === -1
+      ? document.querySelector(".ungrouped-panel")
+      : document.querySelector(`[data-group-id="${targetGroupId}"]`);
+
+  if (targetElement) {
+    targetElement.classList.add("drag-success");
+    setTimeout(() => {
+      targetElement.classList.remove("drag-success");
+    }, 500);
+  }
+};
+
+// 显示拖拽错误反馈
+const showDragErrorFeedback = () => {
+  // 可以添加错误提示，比如红色闪烁
+  const errorElement = document.querySelector(".tabs-tree");
+  if (errorElement) {
+    errorElement.classList.add("drag-error");
+    setTimeout(() => {
+      errorElement.classList.remove("drag-error");
+    }, 1000);
+  }
+};
+
+// 分组内拖拽排序
+const handleGroupInternalSort = async (
+  event: DragEvent,
+  draggedTab: chrome.tabs.Tab,
+  group: ICustomTabGroup
+) => {
+  if (!draggedTab.id) return;
+
+  try {
+    // 获取拖拽目标位置的元素
+    const targetElement = event.target as HTMLElement;
+    const tabListElement = targetElement.closest(".tab-list");
+
+    if (!tabListElement) return;
+
+    // 获取所有标签页元素
+    const tabElements = Array.from(tabListElement.querySelectorAll("li"));
+
+    // 找到拖拽的标签页元素
+    const draggedElement = tabElements.find((el) => {
+      const tabIdElement = el.querySelector("[data-tab-id]") as HTMLElement;
+      return (
+        tabIdElement &&
+        parseInt(tabIdElement.dataset.tabId || "0") === draggedTab.id
+      );
+    });
+
+    if (!draggedElement) return;
+
+    // 计算拖拽的目标位置
+    const mouseY = event.clientY;
+    let targetIndex = -1;
+    let insertPosition: "before" | "after" = "before";
+
+    // 遍历所有标签页元素，找到插入位置
+    for (let i = 0; i < tabElements.length; i++) {
+      const element = tabElements[i];
+      if (element === draggedElement) continue;
+
+      const rect = element.getBoundingClientRect();
+      const elementCenterY = rect.top + rect.height / 2;
+
+      // 如果鼠标在元素的上半部分，插入到该元素之前
+      if (mouseY < elementCenterY) {
+        targetIndex = i;
+        insertPosition = "before";
+        break;
+      }
+      // 如果鼠标在元素的下半部分，检查是否是最后一个元素
+      else if (i === tabElements.length - 1) {
+        targetIndex = i;
+        insertPosition = "after";
+      }
+    }
+
+    // 如果找不到合适的位置，插入到最后
+    if (targetIndex === -1) {
+      targetIndex = tabElements.length;
+      insertPosition = "after";
+    }
+
+    // 获取当前分组中的所有标签页（按当前显示顺序）
+    const currentTabIds = group.tabs
+      .map((tab) => tab.id)
+      .filter(Boolean) as number[];
+
+    // 从数组中移除拖拽的标签页
+    const draggedTabIndex = currentTabIds.indexOf(draggedTab.id);
+    if (draggedTabIndex === -1) return;
+
+    currentTabIds.splice(draggedTabIndex, 1);
+
+    // 调整目标索引（考虑移除拖拽标签页后的数组变化）
+    let adjustedTargetIndex = targetIndex;
+    if (targetIndex > draggedTabIndex) {
+      adjustedTargetIndex--;
+    }
+
+    // 根据插入位置确定最终索引
+    const finalIndex =
+      insertPosition === "after"
+        ? adjustedTargetIndex + 1
+        : adjustedTargetIndex;
+
+    // 插入到目标位置
+    currentTabIds.splice(finalIndex, 0, draggedTab.id);
+
+    // 使用Chrome API重新排序标签页
+    // 首先获取窗口中的所有标签页
+    const allTabs = await chrome.tabs.query({ currentWindow: true });
+
+    // 找到分组中第一个标签页的索引作为基准
+    const groupTabs = allTabs.filter((tab) => tab.groupId === group.id);
+    if (groupTabs.length === 0) return;
+
+    const firstGroupTabIndex = groupTabs[0].index;
+
+    // 重新排列分组内的标签页顺序
+    for (let i = 0; i < currentTabIds.length; i++) {
+      await chrome.tabs.move(currentTabIds[i], {
+        index: firstGroupTabIndex + i,
+      });
+    }
+
+    // 刷新标签页数据
+    await getAllTabs();
+
+    // 显示排序成功的视觉反馈
+    showSortSuccessFeedback(group.id);
+  } catch (error) {
+    console.error("分组内拖拽排序失败:", error);
+    showSortErrorFeedback();
+  } finally {
+    // 重置拖拽状态
+    dragOverGroupId.value = null;
+    dragData.value = null;
+  }
+};
+
+// 显示排序成功反馈
+const showSortSuccessFeedback = (groupId: number) => {
+  const groupElement = document.querySelector(`[data-group-id="${groupId}"]`);
+  if (groupElement) {
+    groupElement.classList.add("sort-success");
+    setTimeout(() => {
+      groupElement.classList.remove("sort-success");
+    }, 500);
+  }
+};
+
+// 显示排序错误反馈
+const showSortErrorFeedback = () => {
+  const errorElement = document.querySelector(".tabs-tree");
+  if (errorElement) {
+    errorElement.classList.add("sort-error");
+    setTimeout(() => {
+      errorElement.classList.remove("sort-error");
+    }, 500);
+  }
+};
+
 // 模态框操作
 const closeGroupModal = () => {
   showGroupModal.value = false;
@@ -496,14 +857,14 @@ async function getAllTabs() {
     // 处理分组数据
     const groupsMap: Map<number, ICustomTabGroup> = new Map();
 
-    // 初始化分组
+    // 初始化分组，从Chrome tabGroups获取collapsed状态
     respTabGroup.forEach((group) => {
       groupsMap.set(group.id, {
         id: group.id,
         title: group.title || `分组 ${group.id}`,
         color: group.color || "grey",
         tabs: [],
-        collapsed: false,
+        collapsed: group.collapsed || false, // 从Chrome获取collapsed状态
       });
     });
 
@@ -581,7 +942,11 @@ onMounted(async () => {
 
   chrome.tabGroups.onUpdated.addListener((group) => {
     if (groupType.value === "custom") {
-      getAllTabs();
+      // 更新本地分组的collapsed状态
+      const localGroup = customTabGroups.value.find((g) => g.id === group.id);
+      if (localGroup && localGroup.collapsed !== group.collapsed) {
+        localGroup.collapsed = group.collapsed;
+      }
     }
   });
 
@@ -665,6 +1030,10 @@ onUnmounted(() => {
     .tab-list {
       display: none;
     }
+  }
+
+  &.drag-over {
+    background-color: var(--domain-hover-color);
   }
 }
 

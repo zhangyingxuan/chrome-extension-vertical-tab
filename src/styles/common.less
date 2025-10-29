@@ -13,6 +13,11 @@
   --button-hover-bg-color: #555;
   --secondary-font-color: #bbb;
   --tab-active-bg-color: #444;
+
+  // 拖拽相关颜色变量
+  --primary-color: #4a90e2;
+  --primary-color-light: rgba(74, 144, 226, 0.2);
+  --primary-color-rgb: 74, 144, 226;
 }
 :root[theme="light"] {
   --footer-bar-height: 70px;
@@ -26,6 +31,31 @@
   --button-hover-bg-color: #e0e0e0;
   --secondary-font-color: #666;
   --tab-active-bg-color: #f0f0f0;
+
+  // 拖拽相关颜色变量
+  --primary-color: #1976d2;
+  --primary-color-light: rgba(25, 118, 210, 0.1);
+  --primary-color-rgb: 25, 118, 210;
+}
+
+// 拖拽排序相关颜色变量
+:root {
+  --drag-indicator-color: #4285f4;
+  --drag-target-color: rgba(66, 133, 244, 0.1);
+  --drag-success-color: rgba(52, 168, 83, 0.1);
+  --drag-error-color: rgba(234, 67, 53, 0.2);
+  --drag-placeholder-color: rgba(66, 133, 244, 0.1);
+}
+
+// 暗色主题下的拖拽排序颜色
+@media (prefers-color-scheme: dark) {
+  :root {
+    --drag-indicator-color: #8ab4f8;
+    --drag-target-color: rgba(138, 180, 248, 0.15);
+    --drag-success-color: rgba(129, 199, 132, 0.15);
+    --drag-error-color: rgba(239, 83, 80, 0.2);
+    --drag-placeholder-color: rgba(138, 180, 248, 0.1);
+  }
 }
 ul,
 p,

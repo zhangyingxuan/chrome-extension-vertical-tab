@@ -23,6 +23,19 @@ export interface IContextMenuConfig {
   type: 'group' | 'tab';
 }
 
+// 拖拽数据接口
+export interface IDragData {
+  tab: chrome.tabs.Tab;
+  sourceGroup: ICustomTabGroup | null;
+}
+
+// 拖拽配置接口
+export interface IDragConfig {
+  isDragging: boolean;
+  dragOverGroupId: number | null;
+  dragSourceGroupId: number | null;
+}
+
 // 分组颜色选项
 export const GROUP_COLORS = [
   { value: 'grey', label: '灰色' },
