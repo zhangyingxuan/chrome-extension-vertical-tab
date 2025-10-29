@@ -12,7 +12,7 @@
     "default_icon": "./sources/tabs256.png"
   },
   "icons": {
-    "48": "sources/tabs68.png",
+    "48": "sources/tabs64.png",
     "128": "sources/tabs128.png",
     "256": "sources/tabs256.png"
   },

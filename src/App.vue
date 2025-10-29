@@ -67,7 +67,7 @@ const groupType = ref("domain");
 const activeTabId = ref(0);
 const activeDomain = ref(""); // 选中展开的域名
 const currDomain = ref(""); // 当前tab的域名
-const defaultIcon = chrome.runtime.getURL("/public/sources/ic-chrome-16.png");
+const defaultIcon = chrome.runtime.getURL("/sources/ic-chrome-16.png");
 // 添加防抖相关变量
 const debounceTimer = ref<number | null>(null);
 const isUpdatingTabs = ref(false);
