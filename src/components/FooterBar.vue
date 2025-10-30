@@ -15,7 +15,7 @@
           <i v-if="uiTheme === 'light'" class="iconfont icon-moon"></i>
           <i v-if="uiTheme === 'dark'" class="iconfont icon-sun"></i>
         </button>
-        <button title="切换分组模式" @click="handleSwitchGroupType">
+        <button style="display: flex;" title="切换分组模式" @click="handleSwitchGroupType">
           <img class="toggle-img" :src="groupType === 'domain' ? toggle_default : toggle_active"></img>
         </button>
       </div>
