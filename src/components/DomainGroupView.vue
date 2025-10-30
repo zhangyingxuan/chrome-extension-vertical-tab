@@ -103,9 +103,10 @@ const defaultIcon = chrome.runtime.getURL("/sources/ic-chrome-16.png");
     position: relative;
 
     .left-facicon {
-      width: 20px;
-      height: 20px;
+      width: 16px;
+      height: 16px;
       transition: transform 0.2s;
+      margin-right: 6px;
     }
 
     &:hover {
@@ -164,6 +165,7 @@ const defaultIcon = chrome.runtime.getURL("/sources/ic-chrome-16.png");
       }
 
       .right-actions {
+        opacity: 0;
         flex-shrink: 0;
         height: 32px;
         display: flex;
@@ -195,6 +197,9 @@ const defaultIcon = chrome.runtime.getURL("/sources/ic-chrome-16.png");
 
       &:hover {
         background-color: var(--tab-hover-color);
+        .right-actions {
+          opacity: 1;
+        }
       }
 
       &.active {
@@ -211,24 +216,5 @@ const defaultIcon = chrome.runtime.getURL("/sources/ic-chrome-16.png");
       }
     }
   }
-}
-
-// 优化动画性能
-.slide-down-enter-active,
-.slide-down-leave-active {
-  transition: all 0.3s ease;
-  will-change: height, opacity;
-}
-
-.slide-down-enter-from,
-.slide-down-leave-to {
-  height: 0;
-  opacity: 0;
-}
-
-.slide-down-enter-to,
-.slide-down-leave-from {
-  height: auto;
-  opacity: 1;
 }
 </style>

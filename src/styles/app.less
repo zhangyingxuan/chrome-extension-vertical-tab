@@ -12,146 +12,19 @@
   }
 }
 
-.domain-panel,
-.group-panel {
-  color: var(--font-color);
-
-  .domain-title {
-    height: 28px;
-    margin: 0;
-    padding: 0;
-    width: calc(100%);
-    display: flex;
-    align-items: center;
-    background-repeat: no-repeat;
-    padding-left: 12px;
-    padding-right: 26px;
-    cursor: pointer;
-    position: relative;
-
-    .left-facicon {
-      width: 20px;
-      height: 20px;
-      transition: transform 0.2s;
-    }
-    &:hover {
-      background-color: var(--domain-hover-color);
-    }
-    .title {
-      padding-left: 5px;
-      flex-grow: 1;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .count {
-      flex-shrink: 0;
-      font-weight: 500;
-      font-size: 12px;
-    }
-    .right-arrow {
-      position: absolute;
-      right: 8px;
-      top: 50%;
-      margin-top: -6px;
-      transition: all 0.3s;
-      font-size: 12px;
-    }
+// 拖拽悬停样式
+&.drag-over {
+  .domain-title,
+  .group-title {
+    background-color: var(--primary-color-light);
+    border-left: 3px solid var(--primary-color);
   }
 
   .tab-list {
-    overflow: hidden;
-    margin: 0;
-    padding: 0;
-
-    li {
-      list-style: none;
-      height: @variable-height-normal;
-      border: 1px solid transparent;
-      padding-left: 32px;
-      display: flex;
-      align-items: center;
-      padding-right: 0;
-      text-wrap: nowrap;
-      color: var(--font-color);
-      position: relative;
-      cursor: pointer;
-      transition: all 0.2s ease;
-
-      // 拖拽样式
-      &.dragging {
-        opacity: 0.5;
-        background-color: var(--tab-hover-color);
-        border: 1px dashed var(--primary-color);
-        transform: scale(0.98);
-      }
-
-      .left-title {
-        flex-grow: 1;
-        height: @variable-height-normal;
-        line-height: @variable-height-normal;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-      .right-actions {
-        flex-shrink: 0;
-        height: @variable-height-normal;
-        display: flex;
-        align-items: center;
-        button {
-          border: 0;
-          background-color: transparent;
-          width: 32px;
-          height: 32px;
-          color: var(--font-color);
-          cursor: pointer;
-          text-align: center;
-          border: 1px solid transparent;
-          border-radius: 3px;
-          i {
-            transition: all 0.3s;
-            display: inline-block;
-          }
-          &:hover {
-            i {
-              transform: rotate(90deg) scale(1.2);
-            }
-          }
-        }
-      }
-      &:hover {
-        background-color: var(--tab-hover-color);
-      }
-      &.active {
-        background-color: rgb(241, 222, 198);
-      }
-    }
-  }
-
-  &.active {
-    .domain-title {
-      .right-arrow {
-        transform: rotateZ(180deg) translateY(-50%);
-        margin-top: -14px;
-      }
-    }
-  }
-
-  // 拖拽悬停样式
-  &.drag-over {
-    .domain-title,
-    .group-title {
-      background-color: var(--primary-color-light);
-      border-left: 3px solid var(--primary-color);
-    }
-
-    .tab-list {
-      border: 2px dashed var(--primary-color);
-      border-radius: 4px;
-      margin: 2px;
-      background-color: rgba(var(--primary-color-rgb), 0.05);
-    }
+    border: 2px dashed var(--primary-color);
+    border-radius: 4px;
+    margin: 2px;
+    background-color: rgba(var(--primary-color-rgb), 0.05);
   }
 }
 
@@ -191,39 +64,6 @@
   opacity: 1;
 }
 
-// 拖拽动画
-.dragging-transition {
-  transition: all 0.2s ease;
-}
-
-// 拖拽排序相关样式
-.drag-indicator {
-  position: absolute;
-  left: 32px;
-  right: 0;
-  height: 2px;
-  background-color: var(--drag-indicator-color, #4285f4);
-  z-index: 10;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-
-  &.visible {
-    opacity: 1;
-  }
-
-  &::before {
-    content: "";
-    position: absolute;
-    left: -4px;
-    top: -3px;
-    width: 8px;
-    height: 8px;
-    background-color: var(--drag-indicator-color, #4285f4);
-    border-radius: 50%;
-  }
-}
-
 // 分组内拖拽排序样式
 .group-panel {
   position: relative;
@@ -238,30 +78,6 @@
         opacity: 0.5;
         transform: scale(0.95);
         z-index: 100;
-      }
-
-      &.drag-target {
-        background-color: var(--drag-target-color, rgba(66, 133, 244, 0.1));
-
-        &::before {
-          content: "";
-          position: absolute;
-          left: 32px;
-          right: 0;
-          top: -1px;
-          height: 2px;
-          background-color: var(--drag-indicator-color, #4285f4);
-          z-index: 5;
-        }
-      }
-
-      &.drag-target-top::before {
-        top: -1px;
-      }
-
-      &.drag-target-bottom::before {
-        top: auto;
-        bottom: -1px;
       }
     }
   }
@@ -297,16 +113,6 @@
 
 .sort-error {
   animation: sort-error 0.5s ease;
-}
-
-// 拖拽占位符
-.drag-placeholder {
-  height: 32px;
-  background-color: var(--drag-placeholder-color, rgba(66, 133, 244, 0.1));
-  border: 1px dashed var(--drag-indicator-color, #4285f4);
-  border-radius: 3px;
-  margin: 2px 0;
-  opacity: 0.7;
 }
 
 // 拖拽成功反馈样式
@@ -365,27 +171,6 @@
   25%,
   75% {
     background-color: rgba(244, 67, 54, 0.1);
-  }
-}
-
-// 拖拽提示样式
-.drag-hint {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background-color: var(--primary-color);
-  color: white;
-  padding: 8px 16px;
-  border-radius: 4px;
-  font-size: 12px;
-  z-index: 1000;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.3s;
-
-  &.show {
-    opacity: 1;
   }
 }
 

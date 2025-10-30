@@ -40,6 +40,12 @@
             @dragstart="$emit('drag-start', $event, tab, group)"
             @dragend="$emit('drag-end', $event)"
           >
+            <img
+              class="left-facicon"
+              :src="tab?.favIconUrl || defaultIcon"
+              alt=""
+              srcset=""
+            />
             <div class="left-title" :data-tab-id="tab?.id">
               {{ tab.title }}
             </div>
@@ -85,6 +91,12 @@
           @dragstart="$emit('drag-start', $event, tab, null)"
           @dragend="$emit('drag-end', $event)"
         >
+          <img
+            class="left-facicon"
+            :src="tab?.favIconUrl || defaultIcon"
+            alt=""
+            srcset=""
+          />
           <div class="left-title" :data-tab-id="tab?.id">
             {{ tab.title }}
           </div>
@@ -112,6 +124,7 @@ interface Props {
 
 defineProps<Props>();
 
+const defaultIcon = chrome.runtime.getURL("/sources/ic-chrome-16.png");
 const emit = defineEmits<{
   "toggle-collapse": [groupId: number];
   "group-context-menu": [event: MouseEvent, group: ICustomTabGroup];
@@ -225,6 +238,12 @@ const getGroupColor = (color: string): string => {
       position: relative;
       cursor: pointer;
 
+      .left-facicon {
+        width: 16px;
+        height: 16px;
+        transition: transform 0.2s;
+        margin-right: 6px;
+      }
       .left-title {
         flex-grow: 1;
         height: 32px;
@@ -235,6 +254,7 @@ const getGroupColor = (color: string): string => {
       }
 
       .right-actions {
+        opacity: 0;
         flex-shrink: 0;
         height: 32px;
         display: flex;
@@ -266,6 +286,9 @@ const getGroupColor = (color: string): string => {
 
       &:hover {
         background-color: var(--tab-hover-color);
+        .right-actions {
+          opacity: 1;
+        }
       }
 
       &.active {
@@ -282,24 +305,5 @@ const getGroupColor = (color: string): string => {
       }
     }
   }
-}
-
-// 优化动画性能
-.slide-down-enter-active,
-.slide-down-leave-active {
-  transition: all 0.3s ease;
-  will-change: height, opacity;
-}
-
-.slide-down-enter-from,
-.slide-down-leave-to {
-  height: 0;
-  opacity: 0;
-}
-
-.slide-down-enter-to,
-.slide-down-leave-from {
-  height: auto;
-  opacity: 1;
 }
 </style>
