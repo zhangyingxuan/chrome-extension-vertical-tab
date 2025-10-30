@@ -12,8 +12,7 @@
           <i class="iconfont icon-setting"></i>
         </button>
         <button title="切换显示模式" @click="handleSwitchTheme">
-          <i v-if="uiTheme === 'light'" class="iconfont icon-moon"></i>
-          <i v-if="uiTheme === 'dark'" class="iconfont icon-sun"></i>
+          <i :class="uiTheme === 'light' ? 'iconfont icon-moon':'iconfont icon-sun' "></i>
         </button>
         <button style="display: flex;" title="切换分组模式" @click="handleSwitchGroupType">
           <img class="toggle-img" :src="groupType === 'domain' ? toggle_default : toggle_active"></img>
@@ -43,6 +42,11 @@
 import { onMounted, reactive, ref } from "vue";
 import { themeStoreKey, groupTypeStoreKey } from "../config";
 const emits = defineEmits(["change", "changeGroupType"]);
+
+const props = defineProps({
+  groupType: String
+})
+
 const toggle_default = chrome.runtime.getURL('/sources/toggle_default.svg');
 const toggle_active = chrome.runtime.getURL('/sources/toggle_active.svg');
 
@@ -50,7 +54,6 @@ const searchData = reactive({
   keywords: "",
 });
 const uiTheme = ref("light");
-const groupType = ref("domain");
 
 const handleSearch = () => {
   emits("change", searchData);
@@ -63,9 +66,8 @@ async function handleNewTab() {
  * 切换分组类型，域名分组/自定义分组
  */
 async function handleSwitchGroupType() {
-  const newGroupType = groupType.value === "domain" ? "custom" : "domain";
+  const newGroupType = props.groupType === "domain" ? "custom" : "domain";
   chrome.storage.local.set({ [groupTypeStoreKey]: newGroupType });
-  groupType.value = newGroupType;
   emits("changeGroupType", newGroupType);
 }
 
@@ -73,6 +75,7 @@ async function handleSwitchTheme() {
   const theme = document.querySelector("html")?.getAttribute("theme");
   const newTheme = theme === "dark" ? "light" : "dark";
   document.querySelector("html")?.setAttribute("theme", newTheme);
+  uiTheme.value = newTheme;
   chrome.storage.local.set({ [themeStoreKey]: newTheme });
 }
 
@@ -83,12 +86,6 @@ const initTheme = async () => {
   uiTheme.value = th || "light";
 };
 
-const initGroupType = async () => {
-  const obj = await chrome.storage.local.get(groupTypeStoreKey);
-  const gt = obj[groupTypeStoreKey];
-  groupType.value = gt || "domain";
-};
-
 const handleSetting = () => {
   chrome.tabs.create({
     url: "chrome://settings/appearance",
@@ -96,13 +93,7 @@ const handleSetting = () => {
 };
 
 onMounted(() => {
-  chrome.storage.onChanged.addListener((changes) => {
-    if (changes[themeStoreKey]) {
-      uiTheme.value = changes[themeStoreKey].newValue;
-    }
-  });
   initTheme();
-  initGroupType();
 });
 </script>
 

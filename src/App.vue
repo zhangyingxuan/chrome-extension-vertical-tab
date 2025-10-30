@@ -34,6 +34,7 @@
     />
 
     <FooterBar
+      :groupType="groupType"
       @change="handleSearch"
       @change-group-type="handleGroupTypeChange"
     />
@@ -477,8 +478,10 @@ const handleCloseTab = async (tab: chrome.tabs.Tab) => {
 
 // 获取所有标签页数据
 async function getAllTabs() {
+  console.log("getAllTabs 获取所有标签页数据...", groupType.value);
   if (groupType.value === "domain") {
     tabList.value = await getAllDomainTabs();
+    console.log("domain 获取所有标签页数据...", tabList.value);
   } else {
     const {
       groups,
@@ -488,11 +491,19 @@ async function getAllTabs() {
     customTabGroups.value = groups;
     ungroupedTabs.value = ungrouped;
     activeGroupId.value = activeId;
+    console.log("custom 获取所有标签页数据...", groups, ungrouped, activeId);
   }
 }
 
+const initGroupType = async () => {
+  const obj = await chrome.storage.local.get(groupTypeStoreKey);
+  const gt = obj[groupTypeStoreKey];
+  groupType.value = gt || "domain";
+};
+
 // 事件监听器
 onMounted(async () => {
+  await initGroupType();
   // 监听分组类型变化
   chrome.storage.onChanged.addListener((changes) => {
     if (changes[groupTypeStoreKey]) {

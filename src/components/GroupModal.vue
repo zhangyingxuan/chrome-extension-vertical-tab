@@ -101,7 +101,7 @@ const getGroupColor = (color: string): string => {
 }
 
 .modal-content {
-  background: var(--modal-bg);
+  background: #fff;
   border-radius: 8px;
   padding: 20px;
   min-width: 300px;
