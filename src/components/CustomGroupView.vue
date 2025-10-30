@@ -24,10 +24,7 @@
         ></div>
         <p class="title">{{ group.title || "未命名分组" }}</p>
         <p class="count">({{ group.tabs?.length }})</p>
-        <i
-          class="right-arrow iconfont"
-          :class="group.collapsed ? 'icon-arrow-right' : 'icon-arrow-down'"
-        ></i>
+        <i class="right-arrow iconfont icon-arrow-down"></i>
       </h3>
       <transition name="slide-down">
         <ul v-show="!group.collapsed" class="tab-list">

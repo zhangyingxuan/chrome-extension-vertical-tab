@@ -68,6 +68,7 @@ document.addEventListener("click", handleClickOutside);
   z-index: 1000;
   min-width: 120px;
   padding: 4px 0;
+  background-color: #fff;
 
   .menu-section {
     .menu-item {

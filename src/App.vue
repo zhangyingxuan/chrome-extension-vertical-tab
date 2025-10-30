@@ -105,7 +105,6 @@ const groupType = ref("domain");
 const activeTabId = ref(0);
 const activeDomain = ref("");
 const currDomain = ref("");
-const defaultIcon = chrome.runtime.getURL("/sources/ic-chrome-16.png");
 
 // TabGroup相关状态
 const customTabGroups = ref<ICustomTabGroup[]>([]);

@@ -16,8 +16,7 @@
           <i v-if="uiTheme === 'dark'" class="iconfont icon-sun"></i>
         </button>
         <button title="切换分组模式" @click="handleSwitchGroupType">
-          <i v-if="groupType === 'domain'" class="iconfont icon-folder"></i>
-          <i v-if="groupType === 'custom'" class="iconfont icon-group"></i>
+          <img class="toggle-img" :src="groupType === 'domain' ? toggle_default : toggle_active"></img>
         </button>
       </div>
     </div>
@@ -44,6 +43,8 @@
 import { onMounted, reactive, ref } from "vue";
 import { themeStoreKey, groupTypeStoreKey } from "../config";
 const emits = defineEmits(["change", "changeGroupType"]);
+const toggle_default = chrome.runtime.getURL('/sources/toggle_default.svg');
+const toggle_active = chrome.runtime.getURL('/sources/toggle_active.svg');
 
 const searchData = reactive({
   keywords: "",
@@ -113,6 +114,12 @@ footer {
   border-top: 1px solid var(--border-color);
   height: var(--footer-bar-height);
   width: 100%;
+
+  .toggle-img {
+    width: 20px;
+    height: 20px;
+  }
+
   .tab-actions {
     height: 30px;
     display: flex;
@@ -126,6 +133,7 @@ footer {
     .right {
       width: 25%;
       text-align: right;
+      display: flex;
     }
     button {
       background-color: transparent;
