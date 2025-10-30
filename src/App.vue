@@ -20,6 +20,7 @@
       :activeGroupId="activeGroupId"
       :activeTabId="activeTabId"
       :dragOverGroupId="dragOverGroupId"
+      :sortPositionHint="sortPositionHint"
       @toggle-collapse="toggleGroupCollapse"
       @group-context-menu="handleGroupContextMenu"
       @tab-context-menu="handleTabContextMenu"
@@ -31,6 +32,9 @@
       @drop="handleDrop"
       @click-tab="handleClickTab"
       @close-tab="handleCloseTab"
+      @drag-enter-tab="handleDragEnterTab"
+      @drag-leave-tab="handleDragLeaveTab"
+      @drag-over-tab="handleDragOverTab"
     />
 
     <FooterBar
@@ -95,6 +99,7 @@ import {
   toggleGroupCollapse as toggleGroupCollapseUtil,
   handleDropOperation,
   handleGroupInternalSort,
+  handleUngroupedSort, // 新增导入
   showDragSuccessFeedback,
   showDragErrorFeedback,
   showSortSuccessFeedback,
@@ -131,6 +136,13 @@ const dragData = ref<{
   sourceGroup: ICustomTabGroup | null;
 } | null>(null);
 const dragOverGroupId = ref<number | null>(null);
+
+// 新增：拖拽排序位置提示状态
+const sortPositionHint = reactive({
+  groupId: null as number | null,
+  index: -1,
+  position: "before" as "before" | "after",
+});
 
 // 搜索相关状态
 const tabList = ref<ITabGroup[]>([]);
@@ -356,6 +368,9 @@ const handleDragStart = (
       rect.height / 2
     );
   }
+
+  // 清除位置提示
+  clearSortPositionHint();
 };
 
 const handleDragEnd = (event: DragEvent) => {
@@ -371,11 +386,15 @@ const handleDragEnd = (event: DragEvent) => {
   document.querySelectorAll(".drag-over, .dragging").forEach((el) => {
     el.classList.remove("drag-over", "dragging");
   });
+
+  clearSortPositionHint();
 };
 
 const handleDragEnter = (event: DragEvent, group: ICustomTabGroup | null) => {
   const groupId = group ? group.id : -1;
-  dragOverGroupId.value = groupId;
+  if (dragOverGroupId.value !== groupId) {
+    dragOverGroupId.value = groupId;
+  }
 
   // 确保分组展开以便拖拽
   if (group && group.collapsed) {
@@ -383,23 +402,120 @@ const handleDragEnter = (event: DragEvent, group: ICustomTabGroup | null) => {
   }
 };
 
+// 拖拽离开分组
 const handleDragLeave = (event: DragEvent, group: ICustomTabGroup | null) => {
-  const groupId = group ? group.id : -1;
-
-  // 只有当拖拽离开当前分组时才清除状态
+  // 只有当鼠标真正离开分组区域时才清除状态
   const relatedTarget = event.relatedTarget as HTMLElement;
-  if (
-    !relatedTarget ||
-    !relatedTarget.closest(`[data-group-id="${groupId}"]`)
-  ) {
+  const currentTarget = event.currentTarget as HTMLElement;
+  if (!relatedTarget || !currentTarget?.contains(relatedTarget)) {
     dragOverGroupId.value = null;
+    clearSortPositionHint();
   }
 };
 
 const handleDragOver = (event: DragEvent, group: ICustomTabGroup | null) => {
   event.preventDefault();
-  const groupId = group ? group.id : -1;
-  dragOverGroupId.value = groupId;
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = "move";
+  }
+};
+
+// 新增：拖拽进入标签页（用于排序）
+const handleDragEnterTab = (
+  event: DragEvent,
+  tab: any,
+  group: ICustomTabGroup | null,
+  index: number
+) => {
+  if (!dragData.value) return;
+
+  // 计算拖拽位置
+  const rect = (event.target as HTMLElement).getBoundingClientRect();
+  const mouseY = event.clientY;
+  const elementCenterY = rect.top + rect.height / 2;
+
+  const position = mouseY < elementCenterY ? "before" : "after";
+
+  // 更新位置提示
+  sortPositionHint.groupId = group?.id ?? -1;
+  sortPositionHint.index = index;
+  sortPositionHint.position = position;
+};
+
+// 新增：拖拽离开标签页
+const handleDragLeaveTab = (
+  event: DragEvent,
+  tab: any,
+  group: ICustomTabGroup | null,
+  index: number
+) => {
+  const relatedTarget = event.relatedTarget as HTMLElement;
+  const currentTarget = event.currentTarget as HTMLElement;
+  if (!relatedTarget || !currentTarget?.contains(relatedTarget)) {
+    clearSortPositionHint();
+  }
+};
+
+// 新增：拖拽在标签页上移动
+const handleDragOverTab = (
+  event: DragEvent,
+  tab: any,
+  group: ICustomTabGroup | null,
+  index: number
+) => {
+  event.preventDefault();
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = "move";
+  }
+
+  // 实时更新位置提示
+  const rect = (event.target as HTMLElement).getBoundingClientRect();
+  const mouseY = event.clientY;
+  const elementCenterY = rect.top + rect.height / 2;
+
+  const position = mouseY < elementCenterY ? "before" : "after";
+
+  sortPositionHint.groupId = group?.id ?? -1;
+  sortPositionHint.index = index;
+  sortPositionHint.position = position;
+};
+
+// 新增：清除位置提示
+const clearSortPositionHint = () => {
+  sortPositionHint.groupId = null;
+  sortPositionHint.index = -1;
+  sortPositionHint.position = "before";
+};
+
+// 新增：处理分组内排序
+const handleGroupInternalSortWrapper = async (
+  event: DragEvent,
+  draggedTab: any,
+  group: ICustomTabGroup
+) => {
+  try {
+    await handleGroupInternalSort(event, draggedTab, group);
+    showSortSuccessFeedback(group.id);
+    await getAllTabs();
+  } catch (error) {
+    console.error("分组内排序失败:", error);
+    showSortErrorFeedback();
+  }
+};
+
+// 新增：处理未分组标签页排序
+const handleUngroupedSortWrapper = async (
+  event: DragEvent,
+  draggedTab: any
+) => {
+  try {
+    await handleUngroupedSort(event, draggedTab, ungroupedTabs.value);
+    showSortSuccessFeedback(-1);
+    await getAllTabs();
+  } catch (error) {
+    console.error("未分组排序失败:", error);
+    showSortErrorFeedback();
+  }
 };
 
 const handleDrop = async (
@@ -422,6 +538,21 @@ const handleDrop = async (
       showSortSuccessFeedback(targetGroupId);
     } catch (error) {
       console.error("分组内拖拽排序失败:", error);
+      showSortErrorFeedback();
+    } finally {
+      dragOverGroupId.value = null;
+      dragData.value = null;
+    }
+    return;
+  }
+
+  // 新增：如果源分组和目标分组都是未分组（null），执行未分组标签页排序
+  if (sourceGroup === null && targetGroup === null) {
+    try {
+      await handleUngroupedSort(event, tab, ungroupedTabs.value);
+      showSortSuccessFeedback(-1);
+    } catch (error) {
+      console.error("未分组标签页拖拽排序失败:", error);
       showSortErrorFeedback();
     } finally {
       dragOverGroupId.value = null;

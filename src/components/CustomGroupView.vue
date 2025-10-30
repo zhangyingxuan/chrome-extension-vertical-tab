@@ -28,17 +28,47 @@
       </h3>
       <transition name="slide-down">
         <ul v-show="!group.collapsed" class="tab-list">
+          <!-- 拖拽位置指示器 - 顶部 -->
+          <div
+            v-if="
+              sortPositionHint.groupId === group.id &&
+              sortPositionHint.position === 'before' &&
+              sortPositionHint.index === 0
+            "
+            class="drop-indicator before"
+          ></div>
+
           <li
             v-for="(tab, jdx) in group.tabs"
             :key="jdx"
             :title="tab?.title"
-            :class="{ active: tab.id === activeTabId }"
+            :class="{
+              active: tab.id === activeTabId,
+              'sort-position-hint':
+                sortPositionHint.groupId === group.id &&
+                sortPositionHint.index === jdx,
+              'sort-before':
+                sortPositionHint.groupId === group.id &&
+                sortPositionHint.position === 'before' &&
+                sortPositionHint.index === jdx,
+              'sort-after':
+                sortPositionHint.groupId === group.id &&
+                sortPositionHint.position === 'after' &&
+                sortPositionHint.index === jdx,
+            }"
             :data-favicon="tab.favIconUrl"
             @click="$emit('click-tab', tab)"
             @contextmenu.prevent="$emit('tab-context-menu', $event, tab, group)"
             draggable="true"
             @dragstart="$emit('drag-start', $event, tab, group)"
             @dragend="$emit('drag-end', $event)"
+            @dragover.prevent="$emit('drag-over-tab', $event, tab, group, jdx)"
+            @dragenter.prevent="
+              $emit('drag-enter-tab', $event, tab, group, jdx)
+            "
+            @dragleave.prevent="
+              $emit('drag-leave-tab', $event, tab, group, jdx)
+            "
           >
             <img
               class="left-facicon"
@@ -55,6 +85,16 @@
               </button>
             </div>
           </li>
+
+          <!-- 拖拽位置指示器 - 底部 -->
+          <div
+            v-if="
+              sortPositionHint.groupId === group.id &&
+              sortPositionHint.position === 'after' &&
+              sortPositionHint.index === group.tabs.length
+            "
+            class="drop-indicator after"
+          ></div>
         </ul>
       </transition>
     </div>
@@ -77,11 +117,34 @@
         <p class="count">({{ ungroupedTabs.length }})</p>
       </h3>
       <ul class="tab-list">
+        <!-- 拖拽位置指示器 - 顶部 -->
+        <div
+          v-if="
+            sortPositionHint.groupId === -1 &&
+            sortPositionHint.position === 'before' &&
+            sortPositionHint.index === 0
+          "
+          class="drop-indicator before"
+        ></div>
+
         <li
           v-for="(tab, index) in ungroupedTabs"
           :key="index"
           :title="tab?.title"
-          :class="{ active: tab.id === activeTabId }"
+          :class="{
+            active: tab.id === activeTabId,
+            'sort-position-hint':
+              sortPositionHint.groupId === -1 &&
+              sortPositionHint.index === index,
+            'sort-before':
+              sortPositionHint.groupId === -1 &&
+              sortPositionHint.position === 'before' &&
+              sortPositionHint.index === index,
+            'sort-after':
+              sortPositionHint.groupId === -1 &&
+              sortPositionHint.position === 'after' &&
+              sortPositionHint.index === index,
+          }"
           :data-favicon="tab.favIconUrl"
           @click="$emit('click-tab', tab)"
           @contextmenu.prevent="
@@ -90,6 +153,9 @@
           draggable="true"
           @dragstart="$emit('drag-start', $event, tab, null)"
           @dragend="$emit('drag-end', $event)"
+          @dragover.prevent="$emit('drag-over-tab', $event, tab, null, index)"
+          @dragenter.prevent="$emit('drag-enter-tab', $event, tab, null, index)"
+          @dragleave.prevent="$emit('drag-leave-tab', $event, tab, null, index)"
         >
           <img
             class="left-facicon"
@@ -106,6 +172,16 @@
             </button>
           </div>
         </li>
+
+        <!-- 拖拽位置指示器 - 底部 -->
+        <div
+          v-if="
+            sortPositionHint.groupId === -1 &&
+            sortPositionHint.position === 'after' &&
+            sortPositionHint.index === ungroupedTabs.length
+          "
+          class="drop-indicator after"
+        ></div>
       </ul>
     </div>
   </div>
@@ -120,6 +196,11 @@ interface Props {
   activeGroupId: number | null;
   activeTabId: number;
   dragOverGroupId: number | null;
+  sortPositionHint: {
+    groupId: number | null;
+    index: number;
+    position: "before" | "after";
+  };
 }
 
 defineProps<Props>();
@@ -137,6 +218,24 @@ const emit = defineEmits<{
   drop: [event: DragEvent, group: ICustomTabGroup | null];
   "click-tab": [tab: any];
   "close-tab": [tab: any];
+  "drag-over-tab": [
+    event: DragEvent,
+    tab: any,
+    group: ICustomTabGroup | null,
+    index: number
+  ];
+  "drag-enter-tab": [
+    event: DragEvent,
+    tab: any,
+    group: ICustomTabGroup | null,
+    index: number
+  ];
+  "drag-leave-tab": [
+    event: DragEvent,
+    tab: any,
+    group: ICustomTabGroup | null,
+    index: number
+  ];
 }>();
 
 const getGroupColor = (color: string): string => {

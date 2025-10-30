@@ -281,6 +281,123 @@ export async function handleGroupInternalSort(
 }
 
 /**
+ * 处理未分组标签页的拖拽排序
+ */
+export async function handleUngroupedSort(
+  event: DragEvent,
+  draggedTab: chrome.tabs.Tab,
+  ungroupedTabs: chrome.tabs.Tab[]
+): Promise<void> {
+  if (!draggedTab.id) return;
+
+  // 获取拖拽目标位置的元素
+  const targetElement = event.target as HTMLElement;
+  const tabListElement = targetElement.closest(".tab-list");
+
+  if (!tabListElement) return;
+
+  // 获取所有标签页元素
+  const tabElements = Array.from(tabListElement.querySelectorAll("li"));
+
+  // 找到拖拽的标签页元素
+  const draggedElement = tabElements.find((el) => {
+    const tabIdElement = el.querySelector("[data-tab-id]") as HTMLElement;
+    return (
+      tabIdElement &&
+      parseInt(tabIdElement.dataset.tabId || "0") === draggedTab.id
+    );
+  });
+
+  if (!draggedElement) return;
+
+  // 计算拖拽的目标位置
+  const mouseY = event.clientY;
+  let targetIndex = -1;
+  let insertPosition: "before" | "after" = "before";
+
+  // 遍历所有标签页元素，找到插入位置
+  for (let i = 0; i < tabElements.length; i++) {
+    const element = tabElements[i];
+    if (element === draggedElement) continue;
+
+    const rect = element.getBoundingClientRect();
+    const elementCenterY = rect.top + rect.height / 2;
+
+    // 如果鼠标在元素的上半部分，插入到该元素之前
+    if (mouseY < elementCenterY) {
+      targetIndex = i;
+      insertPosition = "before";
+      break;
+    }
+    // 如果鼠标在元素的下半部分，检查是否是最后一个元素
+    else if (i === tabElements.length - 1) {
+      targetIndex = i;
+      insertPosition = "after";
+    }
+  }
+
+  // 如果找不到合适的位置，插入到最后
+  if (targetIndex === -1) {
+    targetIndex = tabElements.length;
+    insertPosition = "after";
+  }
+
+  // 获取当前未分组标签页的ID列表（按当前显示顺序）
+  const currentTabIds = ungroupedTabs
+    .map((tab) => tab.id)
+    .filter(Boolean) as number[];
+
+  // 从数组中移除拖拽的标签页
+  const draggedTabIndex = currentTabIds.indexOf(draggedTab.id);
+  if (draggedTabIndex === -1) return;
+
+  currentTabIds.splice(draggedTabIndex, 1);
+
+  // 调整目标索引（考虑移除拖拽标签页后的数组变化）
+  let adjustedTargetIndex = targetIndex;
+  if (targetIndex > draggedTabIndex) {
+    adjustedTargetIndex--;
+  }
+
+  // 根据插入位置确定最终索引
+  const finalIndex =
+    insertPosition === "after"
+      ? adjustedTargetIndex + 1
+      : adjustedTargetIndex;
+
+  // 插入到目标位置
+  currentTabIds.splice(finalIndex, 0, draggedTab.id);
+
+  // 使用Chrome API重新排序标签页
+  // 首先获取窗口中的所有标签页
+  const allTabs = await chrome.tabs.query({ currentWindow: true });
+
+  // 找到未分组标签页的第一个索引作为基准
+  const ungroupedTabIds = allTabs
+    .filter((tab) => tab.groupId === -1)
+    .map((tab) => tab.id)
+    .filter(Boolean) as number[];
+
+  if (ungroupedTabIds.length === 0) return;
+
+  // 找到未分组标签页在窗口中的最小索引
+  const ungroupedTabIndices = allTabs
+    .filter((tab) => tab.groupId === -1)
+    .map((tab) => tab.index);
+
+  if (ungroupedTabIndices.length === 0) return;
+
+  const minUngroupedIndex = Math.min(...ungroupedTabIndices);
+
+  // 重新排列未分组标签页的顺序
+  for (let i = 0; i < currentTabIds.length; i++) {
+    await chrome.tabs.move(currentTabIds[i], {
+      index: minUngroupedIndex + i,
+    });
+  }
+}
+
+/**
  * 显示拖拽成功反馈
  */
 export function showDragSuccessFeedback(targetGroupId: number): void {
