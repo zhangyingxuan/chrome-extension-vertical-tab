@@ -7,27 +7,35 @@
       class="group-panel"
       :class="{
         active: activeGroupId === group.id,
-        collapsed: group.collapsed,
+        collapsed: shouldGroupBeCollapsed(group),
         'drag-over': dragOverGroupId === group.id,
       }"
       :data-group-id="group.id"
+      :style="{
+        '--group-border-color': getGroupColor(group.color),
+        '--group-bg-color': getGroupColor(group.color) + '0D',
+        '--group-border-bottom-color': getGroupColor(group.color),
+        '--group-border-active-color': getGroupColor(group.color),
+        '--group-bg-active-color': getGroupColor(group.color) + '26',
+        '--group-border-bottom-active-color': getGroupColor(group.color),
+      }"
       @contextmenu.prevent="$emit('group-context-menu', $event, group)"
       @dragover.prevent="$emit('drag-over', $event, group)"
       @dragenter.prevent="$emit('drag-enter', $event, group)"
       @dragleave.prevent="$emit('drag-leave', $event, group)"
       @drop.prevent="$emit('drop', $event, group)"
     >
-      <h3 class="group-title" @click="$emit('toggle-collapse', group.id)">
-        <div
-          class="group-color"
-          :style="{ backgroundColor: getGroupColor(group.color) }"
-        ></div>
+      <h3
+        class="group-title"
+        :style="{ backgroundColor: getGroupColor(group.color) }"
+        @click="$emit('toggle-collapse', group.id)"
+      >
         <p class="title">{{ group.title || "未命名分组" }}</p>
-        <p class="count">({{ group.tabs?.length }})</p>
+        <p class="count">({{ getFilteredTabs(group).length }})</p>
         <i class="right-arrow iconfont icon-arrow-down"></i>
       </h3>
       <transition name="slide-down">
-        <ul v-show="!group.collapsed" class="tab-list">
+        <ul v-show="!shouldGroupBeCollapsed(group)" class="tab-list">
           <!-- 拖拽位置指示器 - 顶部 -->
           <div
             v-if="
@@ -39,7 +47,7 @@
           ></div>
 
           <li
-            v-for="(tab, jdx) in group.tabs"
+            v-for="(tab, jdx) in getFilteredTabs(group)"
             :key="jdx"
             :title="tab?.title"
             :class="{
@@ -91,7 +99,7 @@
             v-if="
               sortPositionHint.groupId === group.id &&
               sortPositionHint.position === 'after' &&
-              sortPositionHint.index === group.tabs.length
+              sortPositionHint.index === getFilteredTabs(group).length
             "
             class="drop-indicator after"
           ></div>
@@ -101,7 +109,7 @@
 
     <!-- 未分组标签页区域 -->
     <div
-      v-if="ungroupedTabs.length > 0"
+      v-if="getFilteredUngroupedTabs().length > 0"
       class="group-panel ungrouped-panel"
       :class="{
         'drag-over': dragOverGroupId === -1,
@@ -111,11 +119,9 @@
       @dragleave.prevent="$emit('drag-leave', $event, null)"
       @drop.prevent="$emit('drop', $event, null)"
     >
-      <h3 class="group-title">
-        <div class="group-color" style="background-color: #ccc"></div>
-        <p class="title">未分组</p>
-        <p class="count">({{ ungroupedTabs.length }})</p>
-      </h3>
+      <p class="count" style="position: absolute; top: 0; right: 0">
+        ({{ getFilteredUngroupedTabs().length }})
+      </p>
       <ul class="tab-list">
         <!-- 拖拽位置指示器 - 顶部 -->
         <div
@@ -128,7 +134,7 @@
         ></div>
 
         <li
-          v-for="(tab, index) in ungroupedTabs"
+          v-for="(tab, index) in getFilteredUngroupedTabs()"
           :key="index"
           :title="tab?.title"
           :class="{
@@ -178,11 +184,21 @@
           v-if="
             sortPositionHint.groupId === -1 &&
             sortPositionHint.position === 'after' &&
-            sortPositionHint.index === ungroupedTabs.length
+            sortPositionHint.index === getFilteredUngroupedTabs().length
           "
           class="drop-indicator after"
         ></div>
       </ul>
+    </div>
+
+    <!-- 搜索结果为空时的提示 -->
+    <div
+      v-if="groups.length === 0 && getFilteredUngroupedTabs().length === 0"
+      class="no-search-results"
+    >
+      <div class="icon">🔍</div>
+      <div class="message">未找到匹配的结果</div>
+      <div class="suggestion">尝试使用不同的关键词搜索</div>
     </div>
   </div>
 </template>
@@ -201,9 +217,11 @@ interface Props {
     index: number;
     position: "before" | "after";
   };
+  // 新增：搜索关键词，用于自动展开包含匹配标签页的分组
+  searchKeywords?: string;
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
 
 const defaultIcon = chrome.runtime.getURL("/sources/ic-chrome-16.png");
 const emit = defineEmits<{
@@ -238,6 +256,51 @@ const emit = defineEmits<{
   ];
 }>();
 
+// 新增：判断分组是否应该被折叠
+const shouldGroupBeCollapsed = (group: ICustomTabGroup): boolean => {
+  // 如果有搜索关键词，且分组包含匹配的标签页，则自动展开
+  if (props.searchKeywords) {
+    const hasMatchingTabs = group.tabs?.some((tab) =>
+      isTabMatchingSearch(tab, props.searchKeywords!)
+    );
+    return !hasMatchingTabs;
+  }
+  // 没有搜索关键词时，使用原有的折叠状态
+  return group.collapsed;
+};
+
+// 新增：判断标签页是否匹配搜索条件
+const isTabMatchingSearch = (tab: any, keywords: string): boolean => {
+  const title = tab?.title?.toLowerCase() || "";
+  const url = tab?.url?.toLowerCase() || "";
+  return (
+    title.includes(keywords.toLowerCase()) ||
+    url.includes(keywords.toLowerCase())
+  );
+};
+
+// 新增：获取过滤后的标签页列表
+const getFilteredTabs = (group: ICustomTabGroup): any[] => {
+  if (!props.searchKeywords) {
+    return group.tabs || [];
+  }
+
+  const keywords = props.searchKeywords.toLowerCase();
+  return (group.tabs || []).filter((tab) => isTabMatchingSearch(tab, keywords));
+};
+
+// 新增：获取未分组标签页的过滤列表
+const getFilteredUngroupedTabs = (): any[] => {
+  if (!props.searchKeywords) {
+    return props.ungroupedTabs;
+  }
+
+  const keywords = props.searchKeywords.toLowerCase();
+  return props.ungroupedTabs.filter((tab) =>
+    isTabMatchingSearch(tab, keywords)
+  );
+};
+
 const getGroupColor = (color: string): string => {
   const colorMap: { [key: string]: string } = {
     grey: "#999",
@@ -270,9 +333,22 @@ const getGroupColor = (color: string): string => {
 
 .group-panel {
   color: var(--font-color);
+  border: 3px solid;
+  border-radius: 10px;
+  margin: 3px 0;
+  overflow: hidden;
+  transition: all 0.3s ease;
+
+  // 未分组区域不显示边框
+  &.ungrouped-panel {
+    border: none;
+    border-radius: 0;
+    margin: 0;
+  }
 
   .group-title {
-    height: 28px;
+    color: #fff;
+    height: 22px;
     margin: 0;
     padding: 0;
     width: calc(100%);
@@ -283,6 +359,12 @@ const getGroupColor = (color: string): string => {
     padding-right: 26px;
     cursor: pointer;
     position: relative;
+    transition: all 0.3s ease;
+
+    // 未分组区域的标题不显示边框
+    .ungrouped-panel & {
+      border-bottom: none;
+    }
 
     .group-color {
       width: 12px;
@@ -315,7 +397,7 @@ const getGroupColor = (color: string): string => {
     }
 
     &:hover {
-      background-color: var(--domain-hover-color);
+      background-color: rgba(var(--primary-color-rgb), 0.1);
     }
   }
 
@@ -328,7 +410,7 @@ const getGroupColor = (color: string): string => {
       list-style: none;
       height: 32px;
       border: 1px solid transparent;
-      padding-left: 32px;
+      padding-left: 16px;
       display: flex;
       align-items: center;
       padding-right: 0;
@@ -401,6 +483,43 @@ const getGroupColor = (color: string): string => {
       .right-arrow {
         transform: rotateZ(180deg) translateY(-50%);
         margin-top: -14px;
+      }
+    }
+  }
+
+  // 动态边框和背景色样式 - 使用分组颜色
+  &[data-group-id] {
+    border-color: var(
+      --group-border-color,
+      rgba(var(--primary-color-rgb), 0.3)
+    );
+
+    .group-title {
+      background-color: var(
+        --group-bg-color,
+        rgba(var(--primary-color-rgb), 0.05)
+      );
+      border-bottom-color: var(
+        --group-border-bottom-color,
+        rgba(var(--primary-color-rgb), 0.2)
+      );
+    }
+
+    &.active {
+      border-color: var(
+        --group-border-active-color,
+        rgba(var(--primary-color-rgb), 0.7)
+      );
+
+      .group-title {
+        background-color: var(
+          --group-bg-active-color,
+          rgba(var(--primary-color-rgb), 0.15)
+        );
+        border-bottom-color: var(
+          --group-border-bottom-active-color,
+          rgba(var(--primary-color-rgb), 0.4)
+        );
       }
     }
   }

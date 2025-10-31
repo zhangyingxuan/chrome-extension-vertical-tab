@@ -7,6 +7,7 @@
       :activeDomain="activeDomain"
       :currDomain="currDomain"
       :activeTabId="activeTabId"
+      :searchKeywords="searchData.keywords"
       @active-domain="handleActiveDomain"
       @click-tab="handleClickTab"
       @close-tab="handleCloseTab"
@@ -15,12 +16,13 @@
     <!-- 自定义分组模式 -->
     <CustomGroupView
       v-else-if="groupType === 'custom'"
-      :groups="customTabGroups"
-      :ungroupedTabs="ungroupedTabs"
+      :groups="showCustomGroups"
+      :ungroupedTabs="showUngroupedTabs"
       :activeGroupId="activeGroupId"
       :activeTabId="activeTabId"
       :dragOverGroupId="dragOverGroupId"
       :sortPositionHint="sortPositionHint"
+      :searchKeywords="searchData.keywords"
       @toggle-collapse="toggleGroupCollapse"
       @group-context-menu="handleGroupContextMenu"
       @tab-context-menu="handleTabContextMenu"
@@ -42,6 +44,12 @@
       @change="handleSearch"
       @change-group-type="handleGroupTypeChange"
     />
+
+    <!-- 搜索统计信息 -->
+    <div v-if="searchStats && searchData.keywords" class="search-stats">
+      找到 {{ searchStats.matchedGroups }} 个分组，{{ searchStats.matchedTabs }}
+      个标签页
+    </div>
 
     <!-- 右键菜单 -->
     <ContextMenu
@@ -165,6 +173,59 @@ const showTabList = computed<ITabGroup[]>(() => {
 
     return domainMatch || tabMatch;
   });
+});
+
+// 新增：自定义分组模式下的搜索计算属性
+const showCustomGroups = computed(() => {
+  const keywords = searchData.keywords.toLowerCase();
+  if (!keywords) return customTabGroups.value;
+
+  return customTabGroups.value.filter((group) => {
+    // 搜索分组名称
+    const groupNameMatch = group.title.toLowerCase().includes(keywords);
+
+    // 搜索分组内的标签页
+    const tabMatch = group.tabs?.some((tab) => {
+      const title = tab?.title?.toLowerCase() || "";
+      const url = tab?.url?.toLowerCase() || "";
+      return title.includes(keywords) || url.includes(keywords);
+    });
+
+    return groupNameMatch || tabMatch;
+  });
+});
+
+// 新增：未分组标签页的搜索计算属性
+const showUngroupedTabs = computed(() => {
+  const keywords = searchData.keywords.toLowerCase();
+  if (!keywords) return ungroupedTabs.value;
+
+  return ungroupedTabs.value.filter((tab) => {
+    const title = tab?.title?.toLowerCase() || "";
+    const url = tab?.url?.toLowerCase() || "";
+    return title.includes(keywords) || url.includes(keywords);
+  });
+});
+
+// 新增：搜索结果的统计信息
+const searchStats = computed(() => {
+  if (!searchData.keywords) return null;
+
+  if (groupType.value === "domain") {
+    const matchedGroups = showTabList.value.length;
+    const matchedTabs = showTabList.value.reduce((total, group) => {
+      return total + (group.tabs?.length || 0);
+    }, 0);
+    return { matchedGroups, matchedTabs };
+  } else {
+    const matchedGroups = showCustomGroups.value.length;
+    const matchedGroupTabs = showCustomGroups.value.reduce((total, group) => {
+      return total + (group.tabs?.length || 0);
+    }, 0);
+    const matchedUngroupedTabs = showUngroupedTabs.value.length;
+    const matchedTabs = matchedGroupTabs + matchedUngroupedTabs;
+    return { matchedGroups, matchedTabs };
+  }
 });
 
 // 事件处理函数

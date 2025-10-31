@@ -1,12 +1,10 @@
 <template>
   <div class="domain-group-view">
     <div
-      v-for="(item, index) in tabList"
+      v-for="(item, index) in filteredTabList"
       :key="index"
       class="domain-panel"
-      :class="{
-        active: activeDomain === item.domain || currDomain === item.domain,
-      }"
+      :class="{ active: shouldDomainBeExpanded(item.domain) }"
     >
       <h3
         class="domain-title"
@@ -16,28 +14,21 @@
           class="left-facicon"
           :src="item?.tabs?.[0]?.favIconUrl || defaultIcon"
           alt=""
-          srcset=""
         />
         <p class="title">{{ item.domain }}</p>
-        <p class="count">({{ item?.tabs?.length }})</p>
+        <p class="count">({{ getFilteredTabs(item).length }})</p>
         <i class="right-arrow iconfont icon-arrow-down"></i>
       </h3>
       <transition name="slide-down">
-        <ul
-          v-show="activeDomain === item.domain || currDomain === item.domain"
-          class="tab-list"
-        >
+        <ul v-show="shouldDomainBeExpanded(item.domain)" class="tab-list">
           <li
-            v-for="(tab, jdx) in item?.tabs"
+            v-for="(tab, jdx) in getFilteredTabs(item)"
             :key="jdx"
             :title="tab?.title"
             :class="{ active: tab.id === activeTabId }"
-            :data-favicon="tab.favIconUrl"
             @click="$emit('click-tab', tab)"
           >
-            <div class="left-title" :data-tab-id="tab?.id">
-              {{ tab.title }}
-            </div>
+            <div class="left-title" :data-tab-id="tab?.id">{{ tab.title }}</div>
             <div class="right-actions">
               <button title="关闭标签页" @click.stop="$emit('close-tab', tab)">
                 <i class="iconfont icon-close-circle"></i>
@@ -47,21 +38,30 @@
         </ul>
       </transition>
     </div>
+
+    <div
+      v-if="filteredTabList.length === 0 && searchKeywords"
+      class="no-search-results"
+    >
+      <div class="icon">🔍</div>
+      <div class="message">未找到匹配的结果</div>
+      <div class="suggestion">尝试使用不同的关键词搜索</div>
+    </div>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { ref } from "vue";
+import { ref, computed } from "vue";
 
 interface Props {
   tabList: any[];
   activeDomain: string;
   currDomain: string;
   activeTabId: number;
+  searchKeywords?: string;
 }
 
-defineProps<Props>();
-
+const props = defineProps<Props>();
 const emit = defineEmits<{
   "active-domain": [domain: string];
   "click-tab": [tab: any];
@@ -69,6 +69,51 @@ const emit = defineEmits<{
 }>();
 
 const defaultIcon = chrome.runtime.getURL("/sources/ic-chrome-16.png");
+
+// 优化：统一搜索关键词处理
+const normalizedKeywords = computed(
+  () => props.searchKeywords?.toLowerCase() || ""
+);
+
+// 优化：合并搜索匹配逻辑
+const isTabMatchingSearch = (tab: any): boolean => {
+  if (!normalizedKeywords.value) return true;
+  const title = tab?.title?.toLowerCase() || "";
+  const url = tab?.url?.toLowerCase() || "";
+  return (
+    title.includes(normalizedKeywords.value) ||
+    url.includes(normalizedKeywords.value)
+  );
+};
+
+// 优化：判断域名是否应该被展开
+const shouldDomainBeExpanded = (domain: string): boolean => {
+  if (normalizedKeywords.value) {
+    const domainItem = props.tabList.find((item) => item.domain === domain);
+    return domainItem?.tabs?.some(isTabMatchingSearch) || false;
+  }
+  return props.activeDomain === domain || props.currDomain === domain;
+};
+
+// 优化：合并过滤逻辑
+const filteredTabList = computed(() => {
+  if (!normalizedKeywords.value) return props.tabList;
+
+  return props.tabList.filter((item) => {
+    const domainMatch = item.domain
+      .toLowerCase()
+      .includes(normalizedKeywords.value);
+    const tabMatch = item.tabs?.some(isTabMatchingSearch);
+    return domainMatch || tabMatch;
+  });
+});
+
+// 优化：简化标签页过滤
+const getFilteredTabs = (domainItem: any): any[] => {
+  return normalizedKeywords.value
+    ? (domainItem.tabs || []).filter(isTabMatchingSearch)
+    : domainItem.tabs || [];
+};
 </script>
 
 <style lang="less" scoped>
@@ -77,10 +122,7 @@ const defaultIcon = chrome.runtime.getURL("/sources/ic-chrome-16.png");
   height: 100%;
   padding-bottom: var(--footer-bar-height);
 
-  &::-webkit-scrollbar {
-    width: 3px;
-  }
-
+  &::-webkit-scrollbar,
   &::-webkit-scrollbar-thumb {
     width: 3px;
   }
@@ -92,13 +134,10 @@ const defaultIcon = chrome.runtime.getURL("/sources/ic-chrome-16.png");
   .domain-title {
     height: 28px;
     margin: 0;
-    padding: 0;
-    width: calc(100%);
+    padding: 0 26px 0 12px;
+    width: 100%;
     display: flex;
     align-items: center;
-    background-repeat: no-repeat;
-    padding-left: 12px;
-    padding-right: 26px;
     cursor: pointer;
     position: relative;
 
@@ -106,7 +145,7 @@ const defaultIcon = chrome.runtime.getURL("/sources/ic-chrome-16.png");
       width: 16px;
       height: 16px;
       transition: transform 0.2s;
-      margin-right: 6px;
+      // margin-right: 6px;
     }
 
     &:hover {
@@ -145,12 +184,9 @@ const defaultIcon = chrome.runtime.getURL("/sources/ic-chrome-16.png");
     li {
       list-style: none;
       height: 32px;
-      border: 1px solid transparent;
-      padding-left: 32px;
+      padding: 0 0 0 16px;
       display: flex;
       align-items: center;
-      padding-right: 0;
-      text-wrap: nowrap;
       color: var(--font-color);
       position: relative;
       cursor: pointer;
@@ -173,24 +209,20 @@ const defaultIcon = chrome.runtime.getURL("/sources/ic-chrome-16.png");
 
         button {
           border: 0;
-          background-color: transparent;
+          background: transparent;
           width: 32px;
           height: 32px;
           color: var(--font-color);
           cursor: pointer;
           text-align: center;
-          border: 1px solid transparent;
           border-radius: 3px;
 
           i {
             transition: all 0.3s;
             display: inline-block;
           }
-
-          &:hover {
-            i {
-              transform: rotate(90deg) scale(1.2);
-            }
+          &:hover i {
+            transform: rotate(90deg) scale(1.2);
           }
         }
       }
@@ -208,13 +240,32 @@ const defaultIcon = chrome.runtime.getURL("/sources/ic-chrome-16.png");
     }
   }
 
-  &.active {
-    .domain-title {
-      .right-arrow {
-        transform: rotateZ(180deg) translateY(-50%);
-        margin-top: -14px;
-      }
-    }
+  &.active .domain-title .right-arrow {
+    transform: rotateZ(180deg) translateY(-50%);
+    margin-top: -14px;
+  }
+}
+
+.no-search-results {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  color: var(--font-color-secondary);
+  text-align: center;
+
+  .icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+  }
+  .message {
+    font-size: 16px;
+    margin-bottom: 8px;
+  }
+  .suggestion {
+    font-size: 14px;
+    opacity: 0.7;
   }
 }
 </style>

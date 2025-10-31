@@ -428,3 +428,75 @@
     transform: scaleX(0.5);
   }
 }
+
+// 新增：搜索统计信息样式
+.search-stats {
+  position: fixed;
+  bottom: calc(var(--footer-bar-height) + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--primary-color);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  animation: slideUpStats 0.3s ease-out;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-bottom: 6px solid var(--primary-color);
+  }
+}
+
+@keyframes slideUpStats {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+// 新增：搜索高亮样式
+.search-highlight {
+  background-color: rgba(255, 235, 59, 0.3);
+  border-radius: 2px;
+  padding: 0 2px;
+  font-weight: bold;
+}
+
+// 新增：搜索结果为空时的提示样式
+.no-search-results {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--font-color-secondary);
+  font-size: 14px;
+
+  .icon {
+    font-size: 32px;
+    margin-bottom: 10px;
+    opacity: 0.5;
+  }
+
+  .message {
+    margin-bottom: 8px;
+  }
+
+  .suggestion {
+    font-size: 12px;
+    opacity: 0.7;
+  }
+}
