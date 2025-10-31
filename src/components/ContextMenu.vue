@@ -24,9 +24,24 @@
 
       <div class="menu-divider"></div>
 
-      <div class="menu-item" @click="$emit('change-color')">
-        <span>修改颜色</span>
+      <!-- 颜色选择区域 -->
+      <div class="color-picker-section">
+        <div class="color-picker-grid">
+          <div
+            v-for="color in GROUP_COLORS"
+            :key="color.value"
+            class="color-circle"
+            :class="{ active: selectedColor === color.value }"
+            :style="{ backgroundColor: getColorValue(color.value) }"
+            @click="selectColor(color.value)"
+          >
+            <div class="color-checkmark" v-if="selectedColor === color.value">
+              ✓
+            </div>
+          </div>
+        </div>
       </div>
+
       <div class="menu-divider"></div>
       <div class="menu-item" @click="$emit('ungroup-tabs')">
         <span>取消分组</span>
@@ -67,6 +82,7 @@
 <script lang="ts" setup>
 import { ref, onMounted, onUnmounted, nextTick, watch } from "vue";
 import { IContextMenuConfig } from "../type";
+import { GROUP_COLORS } from "../type";
 
 interface Props {
   position: { x: number; y: number };
@@ -77,7 +93,7 @@ const props = defineProps<Props>();
 
 const emit = defineEmits<{
   "rename-group": [newTitle: string];
-  "change-color": [];
+  "change-color": [color: string];
   "ungroup-tabs": [];
   "close-group": [];
   "move-to-new-group": [];
@@ -93,6 +109,24 @@ const windowHeight = ref(0);
 // 重命名相关状态
 const renameInputRef = ref<HTMLInputElement | null>(null);
 const editingGroupTitle = ref("");
+
+// 颜色选择相关状态
+const selectedColor = ref("grey");
+
+// 获取颜色值
+const getColorValue = (color: string) => {
+  const colorMap: Record<string, string> = {
+    grey: "#9ca3af",
+    blue: "#3b82f6",
+    red: "#ef4444",
+    yellow: "#f59e0b",
+    green: "#10b981",
+    pink: "#ec4899",
+    purple: "#8b5cf6",
+    cyan: "#06b6d4",
+  };
+  return colorMap[color] || colorMap.grey;
+};
 
 // 更新窗口尺寸
 const updateWindowSize = () => {
@@ -121,10 +155,22 @@ watch(
   (newConfig) => {
     if (newConfig.type === "group" && newConfig.groupId) {
       initRenameInput();
+      // 初始化颜色选择状态
+      initColorSelection();
     }
   },
   { immediate: true, deep: true }
 );
+
+// 初始化颜色选择状态
+const initColorSelection = () => {
+  // 使用从props传递的分组颜色信息
+  if (props.config.type === "group" && props.config.groupColor) {
+    selectedColor.value = props.config.groupColor;
+  } else {
+    selectedColor.value = "grey";
+  }
+};
 
 // 保存分组重命名
 const saveGroupRename = () => {
@@ -137,6 +183,12 @@ const saveGroupRename = () => {
 // 取消重命名
 const cancelGroupRename = () => {
   emit("close");
+};
+
+// 选择颜色
+const selectColor = (color: string) => {
+  selectedColor.value = color;
+  emit("change-color", color);
 };
 
 // 复制标签页链接
@@ -291,6 +343,53 @@ onUnmounted(() => {
 
       &::placeholder {
         color: var(--font-color-secondary);
+      }
+    }
+  }
+
+  .color-picker-section {
+    padding: 8px 16px;
+
+    .color-picker-label {
+      font-size: 12px;
+      color: var(--font-color-secondary);
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    .color-picker-grid {
+      display: flex;
+      gap: 6px;
+      justify-content: space-between;
+
+      .color-circle {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid transparent;
+        transition: all 0.2s ease;
+        position: relative;
+
+        &:hover {
+          transform: scale(1.1);
+          border-color: var(--border-color);
+        }
+
+        &.active {
+          border-color: var(--primary-color);
+          box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.2);
+        }
+
+        .color-checkmark {
+          color: white;
+          font-size: 12px;
+          font-weight: bold;
+          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+        }
       }
     }
   }

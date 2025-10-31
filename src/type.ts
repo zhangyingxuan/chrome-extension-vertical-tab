@@ -22,6 +22,7 @@ export interface IContextMenuConfig {
   tabId?: number;
   type: 'group' | 'tab';
   groupTitle?: string; // 添加分组标题属性
+  groupColor?: string; // 添加分组颜色属性
 }
 
 // 拖拽数据接口

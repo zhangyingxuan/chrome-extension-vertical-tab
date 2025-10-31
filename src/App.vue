@@ -298,6 +298,7 @@ const handleGroupContextMenu = (event: MouseEvent, group: ICustomTabGroup) => {
   contextMenuConfig.type = "group";
   contextMenuConfig.groupId = group.id;
   contextMenuConfig.groupTitle = group.title; // 添加分组标题
+  contextMenuConfig.groupColor = group.color; // 添加分组颜色
   showContextMenu.value = true;
 };
 
@@ -364,13 +365,34 @@ const handleRenameGroup = (newTitle?: string) => {
   }
 };
 
-const handleChangeGroupColor = () => {
+const handleChangeGroupColor = (color?: string) => {
   if (contextMenuConfig.groupId) {
-    currentGroupId.value = contextMenuConfig.groupId;
-    modalType.value = "color";
-    modalTitle.value = "修改分组颜色";
-    showGroupModal.value = true;
-    showContextMenu.value = false;
+    if (color) {
+      // 直接修改颜色，无需模态框
+      const group = customTabGroups.value.find(
+        (g) => g.id === contextMenuConfig.groupId
+      );
+      if (group) {
+        group.color = color;
+
+        // 同步更新Chrome的分组颜色
+        try {
+          chrome.tabGroups.update(contextMenuConfig.groupId, {
+            color: color as chrome.tabGroups.Color,
+          });
+          console.log("分组颜色修改成功:", color);
+        } catch (error) {
+          console.error("更新Chrome分组颜色失败:", error);
+        }
+      }
+    } else {
+      // 保持原来的模态框逻辑作为备用
+      currentGroupId.value = contextMenuConfig.groupId;
+      modalType.value = "color";
+      modalTitle.value = "修改分组颜色";
+      showGroupModal.value = true;
+      showContextMenu.value = false;
+    }
   }
 };
 
