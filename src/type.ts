@@ -21,6 +21,7 @@ export interface IContextMenuConfig {
   groupId?: number;
   tabId?: number;
   type: 'group' | 'tab';
+  groupTitle?: string; // 添加分组标题属性
 }
 
 // 拖拽数据接口

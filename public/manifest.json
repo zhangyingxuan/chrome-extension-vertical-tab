@@ -9,7 +9,7 @@
   },
   "action": {
     "default_title": "点击打开侧边栏管理标签页",
-    "default_icon": "./sources/tabs256.png"
+    "default_icon": "./sources/tabs128.png"
   },
   "icons": {
     "48": "sources/tabs64.png",

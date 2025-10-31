@@ -8,7 +8,7 @@
             v-model="localTitle"
             type="text"
             placeholder="输入分组名称"
-            @keyup.enter="$emit('confirm')"
+            @keyup.enter="handleConfirm"
           />
         </div>
         <div v-if="type === 'color'">
@@ -28,7 +28,7 @@
       </div>
       <div class="modal-actions">
         <button @click="$emit('close')">取消</button>
-        <button @click="$emit('confirm')">确认</button>
+        <button @click="handleConfirm">确认</button>
       </div>
     </div>
   </div>
@@ -50,7 +50,7 @@ const props = defineProps<Props>();
 
 const emit = defineEmits<{
   close: [];
-  confirm: [];
+  confirm: [data: { newTitle?: string; selectedColor?: string }];
 }>();
 
 const localTitle = ref(props.newTitle);
@@ -83,6 +83,14 @@ const getGroupColor = (color: string): string => {
     cyan: "#24c1e0",
   };
   return colorMap[color] || "#999";
+};
+
+const handleConfirm = () => {
+  if (props.type === "rename") {
+    emit("confirm", { newTitle: localTitle.value.trim() });
+  } else if (props.type === "color") {
+    emit("confirm", { selectedColor: localColor.value });
+  }
 };
 </script>
 
@@ -173,7 +181,7 @@ const getGroupColor = (color: string): string => {
       transition: background-color 0.2s;
 
       &:hover {
-        background: var(--button-hover-bg);
+        background: var(--button-hover-bg-color);
       }
 
       &:last-child {

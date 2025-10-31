@@ -61,7 +61,6 @@
       @ungroup-tabs="handleUngroupTabs"
       @close-group="handleCloseGroup"
       @move-to-new-group="handleMoveToNewGroup"
-      @move-to-existing-group="handleMoveToExistingGroup"
       @close-tab="handleCloseTabFromMenu"
       @close="closeContextMenu"
     />
@@ -298,6 +297,7 @@ const handleGroupContextMenu = (event: MouseEvent, group: ICustomTabGroup) => {
   contextMenuPosition.y = event.clientY;
   contextMenuConfig.type = "group";
   contextMenuConfig.groupId = group.id;
+  contextMenuConfig.groupTitle = group.title; // 添加分组标题
   showContextMenu.value = true;
 };
 
@@ -322,13 +322,45 @@ const closeContextMenu = () => {
 };
 
 // 分组操作
-const handleRenameGroup = () => {
+const handleRenameGroup = (newTitle?: string) => {
   if (contextMenuConfig.groupId) {
-    currentGroupId.value = contextMenuConfig.groupId;
-    modalType.value = "rename";
-    modalTitle.value = "重命名分组";
-    showGroupModal.value = true;
-    showContextMenu.value = false;
+    if (newTitle && newTitle.trim()) {
+      // 直接更新分组名称，无需模态框
+      const group = customTabGroups.value.find(
+        (g) => g.id === contextMenuConfig.groupId
+      );
+      if (group) {
+        const trimmedTitle = newTitle.trim();
+        group.title = trimmedTitle;
+
+        // 同步更新Chrome的分组标题
+        try {
+          chrome.tabGroups.update(contextMenuConfig.groupId, {
+            title: trimmedTitle,
+          });
+          console.log("分组重命名成功:", trimmedTitle);
+        } catch (error) {
+          console.error("更新Chrome分组标题失败:", error);
+        }
+      }
+      showContextMenu.value = false;
+    } else {
+      // 如果没有传递新标题，保持原来的模态框逻辑（备用）
+      currentGroupId.value = contextMenuConfig.groupId;
+      modalType.value = "rename";
+      modalTitle.value = "重命名分组";
+
+      // 设置当前分组标题作为初始值
+      const group = customTabGroups.value.find(
+        (g) => g.id === contextMenuConfig.groupId
+      );
+      if (group) {
+        newGroupTitle.value = group.title || "";
+      }
+
+      showGroupModal.value = true;
+      showContextMenu.value = false;
+    }
   }
 };
 
@@ -381,12 +413,29 @@ const handleCloseGroup = async () => {
 };
 
 // 标签页操作
-const handleMoveToNewGroup = () => {
-  showContextMenu.value = false;
-};
+const handleMoveToNewGroup = async () => {
+  if (contextMenuConfig.tabId) {
+    try {
+      // 创建新分组
+      const tabId = contextMenuConfig.tabId;
+      const group = await chrome.tabs.group({ tabIds: [tabId] });
 
-const handleMoveToExistingGroup = () => {
-  showContextMenu.value = false;
+      // 设置分组标题和颜色
+      const groupTitle = `新分组 ${new Date().getTime()}`;
+      await chrome.tabGroups.update(group, {
+        title: groupTitle,
+        color: "grey",
+      });
+
+      // 显示成功提示
+      console.log("标签页已移动到新分组");
+    } catch (error) {
+      console.error("移动到新分组失败:", error);
+    } finally {
+      showContextMenu.value = false;
+      await getAllTabs();
+    }
+  }
 };
 
 const handleCloseTabFromMenu = async () => {
@@ -394,6 +443,18 @@ const handleCloseTabFromMenu = async () => {
     await chrome.tabs.remove(contextMenuConfig.tabId);
     showContextMenu.value = false;
     getAllTabs();
+  }
+};
+
+// 新增：键盘快捷键支持
+const handleKeyDown = (event: KeyboardEvent) => {
+  if (!showContextMenu.value) return;
+
+  // ESC键关闭菜单
+  if (event.key === "Escape") {
+    closeContextMenu();
+    event.preventDefault();
+    event.stopPropagation();
   }
 };
 
@@ -643,16 +704,30 @@ const closeGroupModal = () => {
   currentGroupId.value = null;
 };
 
-const confirmGroupAction = async () => {
+const confirmGroupAction = async (data?: {
+  newTitle?: string;
+  selectedColor?: string;
+}) => {
   if (currentGroupId.value) {
     const group = customTabGroups.value.find(
       (g) => g.id === currentGroupId.value
     );
     if (group) {
-      if (modalType.value === "rename" && newGroupTitle.value.trim()) {
-        group.title = newGroupTitle.value.trim();
-      } else if (modalType.value === "color") {
-        group.color = selectedColor.value;
+      if (modalType.value === "rename" && data?.newTitle?.trim()) {
+        const newTitle = data.newTitle.trim();
+        group.title = newTitle;
+
+        // 同步更新Chrome的分组标题
+        try {
+          await chrome.tabGroups.update(currentGroupId.value, {
+            title: newTitle,
+          });
+          console.log("分组重命名成功:", newTitle);
+        } catch (error) {
+          console.error("更新Chrome分组标题失败:", error);
+        }
+      } else if (modalType.value === "color" && data?.selectedColor) {
+        group.color = data.selectedColor;
       }
     }
   }
@@ -670,10 +745,8 @@ const handleCloseTab = async (tab: chrome.tabs.Tab) => {
 
 // 获取所有标签页数据
 async function getAllTabs() {
-  console.log("getAllTabs 获取所有标签页数据...", groupType.value);
   if (groupType.value === "domain") {
     tabList.value = await getAllDomainTabs();
-    console.log("domain 获取所有标签页数据...", tabList.value);
   } else {
     const {
       groups,
@@ -683,7 +756,6 @@ async function getAllTabs() {
     customTabGroups.value = groups;
     ungroupedTabs.value = ungrouped;
     activeGroupId.value = activeId;
-    console.log("custom 获取所有标签页数据...", groups, ungrouped, activeId);
   }
 }
 
@@ -715,6 +787,9 @@ onMounted(async () => {
 
   // 添加全局点击事件监听，用于关闭右键菜单
   document.addEventListener("click", closeContextMenu);
+
+  // 添加键盘事件监听
+  document.addEventListener("keydown", handleKeyDown);
 
   // TabGroup相关事件监听
   chrome.tabGroups.onCreated.addListener((group) => {
@@ -807,6 +882,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   document.removeEventListener("click", closeContextMenu);
+  document.removeEventListener("keydown", handleKeyDown);
 });
 </script>
 
