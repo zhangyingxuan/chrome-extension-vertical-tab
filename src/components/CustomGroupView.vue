@@ -12,12 +12,14 @@
       }"
       :data-group-id="group.id"
       :style="{
-        '--group-border-color': getGroupColor(group.color),
-        '--group-bg-color': getGroupColor(group.color) + '0D',
-        '--group-border-bottom-color': getGroupColor(group.color),
-        '--group-border-active-color': getGroupColor(group.color),
-        '--group-bg-active-color': getGroupColor(group.color) + '26',
-        '--group-border-bottom-active-color': getGroupColor(group.color),
+        '--group-border-color': ColorUtils.getColorValue(group.color),
+        '--group-bg-color': ColorUtils.getColorValue(group.color) + '0D',
+        '--group-border-bottom-color': ColorUtils.getColorValue(group.color),
+        '--group-border-active-color': ColorUtils.getColorValue(group.color),
+        '--group-bg-active-color': ColorUtils.getColorValue(group.color) + '26',
+        '--group-border-bottom-active-color': ColorUtils.getColorValue(
+          group.color
+        ),
       }"
       @contextmenu.prevent="$emit('group-context-menu', $event, group)"
       @dragover.prevent="$emit('drag-over', $event, group)"
@@ -27,7 +29,7 @@
     >
       <h3
         class="group-title"
-        :style="{ backgroundColor: getGroupColor(group.color) }"
+        :style="{ backgroundColor: ColorUtils.getColorValue(group.color) }"
         @click="$emit('toggle-collapse', group.id)"
       >
         <p class="title">{{ group.title || "未命名分组" }}</p>
@@ -205,6 +207,7 @@
 
 <script lang="ts" setup>
 import { ICustomTabGroup } from "../type";
+import { ColorUtils } from "../utils/colorUtils";
 
 interface Props {
   groups: ICustomTabGroup[];
@@ -299,20 +302,6 @@ const getFilteredUngroupedTabs = (): any[] => {
   return props.ungroupedTabs.filter((tab) =>
     isTabMatchingSearch(tab, keywords)
   );
-};
-
-const getGroupColor = (color: string): string => {
-  const colorMap: { [key: string]: string } = {
-    grey: "#999",
-    blue: "#4285f4",
-    red: "#ea4335",
-    yellow: "#fbbc05",
-    green: "#34a853",
-    pink: "#f28b82",
-    purple: "#a142f4",
-    cyan: "#24c1e0",
-  };
-  return colorMap[color] || "#999";
 };
 </script>
 

@@ -1,9 +1,10 @@
 <template>
   <div
+    ref="menuRef"
     class="context-menu"
     :style="{
-      left: Math.min(position.x, windowWidth - 200) + 'px',
-      top: Math.min(position.y, windowHeight - 300) + 'px',
+      left: adjustedPosition.x + 'px',
+      top: adjustedPosition.y + 'px',
     }"
     @click.stop
     v-click-outside="handleClickOutside"
@@ -16,7 +17,6 @@
           v-model="editingGroupTitle"
           class="rename-input"
           placeholder="输入分组名称"
-          @blur="saveGroupRename"
           @keydown.enter="saveGroupRename"
           @keydown.escape="cancelGroupRename"
         />
@@ -32,7 +32,7 @@
             :key="color.value"
             class="color-circle"
             :class="{ active: selectedColor === color.value }"
-            :style="{ backgroundColor: getColorValue(color.value) }"
+            :style="{ backgroundColor: ColorUtils.getColorValue(color.value) }"
             @click="selectColor(color.value)"
           >
             <div class="color-checkmark" v-if="selectedColor === color.value">
@@ -83,6 +83,7 @@
 import { ref, onMounted, onUnmounted, nextTick, watch } from "vue";
 import { IContextMenuConfig } from "../type";
 import { GROUP_COLORS } from "../type";
+import { ColorUtils } from "../utils/colorUtils";
 
 interface Props {
   position: { x: number; y: number };
@@ -113,34 +114,65 @@ const editingGroupTitle = ref("");
 // 颜色选择相关状态
 const selectedColor = ref("grey");
 
-// 获取颜色值
-const getColorValue = (color: string) => {
-  const colorMap: Record<string, string> = {
-    grey: "#9ca3af",
-    blue: "#3b82f6",
-    red: "#ef4444",
-    yellow: "#f59e0b",
-    green: "#10b981",
-    pink: "#ec4899",
-    purple: "#8b5cf6",
-    cyan: "#06b6d4",
+// 菜单元素引用和调整位置
+const menuRef = ref<HTMLElement | null>(null);
+const adjustedPosition = ref({ x: 0, y: 0 });
+
+// 防抖函数
+const debounce = (fn: Function, delay: number) => {
+  let timeoutId: number;
+  return (...args: any[]) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn(...args), delay);
   };
-  return colorMap[color] || colorMap.grey;
 };
 
-// 更新窗口尺寸
-const updateWindowSize = () => {
+// 更新窗口尺寸（防抖处理）
+const updateWindowSize = debounce(() => {
   windowWidth.value = window.innerWidth;
   windowHeight.value = window.innerHeight;
+  adjustMenuPosition();
+}, 100);
+
+// 边界检测和位置调整函数（优化版）
+const adjustMenuPosition = () => {
+  if (!menuRef.value) return;
+
+  const menuRect = menuRef.value.getBoundingClientRect();
+  const { x: originalX, y: originalY } = props.position;
+
+  // 计算调整后的位置（使用更简洁的边界检测）
+  const adjustedX = Math.max(
+    10,
+    Math.min(originalX, windowWidth.value - menuRect.width - 10)
+  );
+  const adjustedY = Math.max(
+    10,
+    Math.min(originalY, windowHeight.value - menuRect.height - 10)
+  );
+
+  // 只有当位置确实发生变化时才更新
+  if (
+    adjustedPosition.value.x !== adjustedX ||
+    adjustedPosition.value.y !== adjustedY
+  ) {
+    adjustedPosition.value = { x: adjustedX, y: adjustedY };
+  }
 };
 
-// 初始化重命名输入框
-const initRenameInput = async () => {
+// 监听位置变化，重新计算边界（优化watch使用）
+watch(() => props.position, adjustMenuPosition, { immediate: true });
+
+// 统一初始化函数
+const initMenuState = () => {
   if (props.config.type === "group" && props.config.groupId) {
-    // 使用从props传递的分组标题
+    // 设置重命名输入框值
     editingGroupTitle.value = props.config.groupTitle || "";
 
-    // 聚焦输入框
+    // 设置颜色选择状态
+    selectedColor.value = props.config.groupColor || "grey";
+
+    // 延迟聚焦输入框
     nextTick(() => {
       if (renameInputRef.value) {
         renameInputRef.value.focus();
@@ -149,33 +181,14 @@ const initRenameInput = async () => {
   }
 };
 
-// 监听props.config的变化，当配置变化时重新初始化输入框
-watch(
-  () => props.config,
-  (newConfig) => {
-    if (newConfig.type === "group" && newConfig.groupId) {
-      initRenameInput();
-      // 初始化颜色选择状态
-      initColorSelection();
-    }
-  },
-  { immediate: true, deep: true }
-);
-
-// 初始化颜色选择状态
-const initColorSelection = () => {
-  // 使用从props传递的分组颜色信息
-  if (props.config.type === "group" && props.config.groupColor) {
-    selectedColor.value = props.config.groupColor;
-  } else {
-    selectedColor.value = "grey";
-  }
-};
+// 监听配置变化（简化watch，避免深度监听）
+watch(() => props.config.type, initMenuState, { immediate: true });
 
 // 保存分组重命名
 const saveGroupRename = () => {
-  if (editingGroupTitle.value.trim()) {
-    emit("rename-group", editingGroupTitle.value.trim());
+  const trimmedTitle = editingGroupTitle.value.trim();
+  if (trimmedTitle) {
+    emit("rename-group", trimmedTitle);
   }
   emit("close");
 };
@@ -185,73 +198,72 @@ const cancelGroupRename = () => {
   emit("close");
 };
 
-// 选择颜色
+// 选择颜色并关闭菜单
 const selectColor = (color: string) => {
   selectedColor.value = color;
   emit("change-color", color);
+  emit("close");
+};
+
+// 复制文本到剪贴板
+const copyToClipboard = async (text: string) => {
+  try {
+    await navigator.clipboard.writeText(text);
+    console.log(
+      "已复制到剪贴板:",
+      text.substring(0, 50) + (text.length > 50 ? "..." : "")
+    );
+  } catch (err) {
+    console.error("复制失败:", err);
+    // 降级方案
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textArea);
+  }
 };
 
 // 复制标签页链接
 const copyTabUrl = async () => {
-  if (props.config.tabId) {
-    const tabs = await chrome.tabs.query({});
-    const tab = tabs.find((t) => t.id === props.config.tabId);
-    if (tab?.url) {
-      try {
-        await navigator.clipboard.writeText(tab.url);
-        console.log("链接已复制到剪贴板");
-      } catch (err) {
-        console.error("复制链接失败:", err);
-        // 降级方案
-        const textArea = document.createElement("textarea");
-        textArea.value = tab.url;
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand("copy");
-        document.body.removeChild(textArea);
-      }
-    }
+  const tab = await getCurrentTab();
+  if (tab?.url) {
+    await copyToClipboard(tab.url);
   }
   emit("close");
 };
 
 // 复制标签页标题
 const copyTabTitle = async () => {
-  if (props.config.tabId) {
-    const tabs = await chrome.tabs.query({});
-    const tab = tabs.find((t) => t.id === props.config.tabId);
-    if (tab?.title) {
-      try {
-        await navigator.clipboard.writeText(tab.title);
-        console.log("标题已复制到剪贴板");
-      } catch (err) {
-        console.error("复制标题失败:", err);
-      }
-    }
+  const tab = await getCurrentTab();
+  if (tab?.title) {
+    await copyToClipboard(tab.title);
   }
   emit("close");
 };
 
+// 获取当前标签页信息
+const getCurrentTab = async () => {
+  if (!props.config.tabId) return null;
+  const tabs = await chrome.tabs.query({});
+  return tabs.find((t) => t.id === props.config.tabId);
+};
+
 // 在新标签页打开
 const openInNewTab = async () => {
-  if (props.config.tabId) {
-    const tabs = await chrome.tabs.query({});
-    const tab = tabs.find((t) => t.id === props.config.tabId);
-    if (tab?.url) {
-      await chrome.tabs.create({ url: tab.url });
-    }
+  const tab = await getCurrentTab();
+  if (tab?.url) {
+    await chrome.tabs.create({ url: tab.url });
   }
   emit("close");
 };
 
 // 在新窗口打开
 const openInNewWindow = async () => {
-  if (props.config.tabId) {
-    const tabs = await chrome.tabs.query({});
-    const tab = tabs.find((t) => t.id === props.config.tabId);
-    if (tab?.url) {
-      await chrome.windows.create({ url: tab.url });
-    }
+  const tab = await getCurrentTab();
+  if (tab?.url) {
+    await chrome.windows.create({ url: tab.url });
   }
   emit("close");
 };
@@ -293,13 +305,20 @@ const vClickOutside = {
   },
 };
 
-// 组件挂载时初始化窗口尺寸
+// 组件挂载时一次性初始化
 onMounted(() => {
-  updateWindowSize();
+  // 一次性获取窗口尺寸
+  windowWidth.value = window.innerWidth;
+  windowHeight.value = window.innerHeight;
+
+  // 添加防抖的resize监听
   window.addEventListener("resize", updateWindowSize);
 
-  // 初始化重命名输入框
-  initRenameInput();
+  // 初始化菜单状态并延迟边界检测
+  initMenuState();
+  setTimeout(() => {
+    adjustMenuPosition();
+  }, 50);
 });
 
 onUnmounted(() => {
@@ -317,10 +336,14 @@ onUnmounted(() => {
   z-index: 10000;
   min-width: 200px;
   max-width: 300px;
+  min-height: 100px;
+  max-height: 400px;
   padding: 8px 0;
   font-size: 13px;
   backdrop-filter: blur(10px);
   animation: fadeIn 0.15s ease-out;
+  box-sizing: border-box;
+  overflow: hidden;
 
   .rename-input-container {
     padding: 8px 16px;
@@ -395,6 +418,10 @@ onUnmounted(() => {
   }
 
   .menu-section {
+    max-height: 350px;
+    overflow-y: auto;
+    overflow-x: hidden;
+
     .menu-item {
       display: flex;
       align-items: center;
@@ -421,6 +448,24 @@ onUnmounted(() => {
       margin: 6px 0;
       opacity: 0.5;
     }
+  }
+
+  // 滚动条样式
+  .menu-section::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .menu-section::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .menu-section::-webkit-scrollbar-thumb {
+    background: var(--border-color-light);
+    border-radius: 2px;
+  }
+
+  .menu-section::-webkit-scrollbar-thumb:hover {
+    background: var(--border-color);
   }
 }
 

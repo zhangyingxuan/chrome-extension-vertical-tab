@@ -48,4 +48,5 @@ export const GROUP_COLORS = [
   { value: 'pink', label: '粉色' },
   { value: 'purple', label: '紫色' },
   { value: 'cyan', label: '青色' },
+  { value: 'orange', label: '橙色' },
 ] as const;

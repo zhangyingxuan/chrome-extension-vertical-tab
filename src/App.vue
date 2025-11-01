@@ -64,18 +64,6 @@
       @close-tab="handleCloseTabFromMenu"
       @close="closeContextMenu"
     />
-
-    <!-- 分组设置模态框 -->
-    <GroupModal
-      v-if="showGroupModal"
-      :type="modalType"
-      :title="modalTitle"
-      :groupId="currentGroupId"
-      :newTitle="newGroupTitle"
-      :selectedColor="selectedColor"
-      @close="closeGroupModal"
-      @confirm="confirmGroupAction"
-    />
   </div>
 </template>
 
@@ -95,7 +83,6 @@ import DomainGroupView from "./components/DomainGroupView.vue";
 import CustomGroupView from "./components/CustomGroupView.vue";
 import FooterBar from "./components/FooterBar.vue";
 import ContextMenu from "./components/ContextMenu.vue";
-import GroupModal from "./components/GroupModal.vue";
 
 // 导入工具函数
 import {
@@ -128,14 +115,6 @@ const activeGroupId = ref<number | null>(null);
 const showContextMenu = ref(false);
 const contextMenuPosition = reactive({ x: 0, y: 0 });
 const contextMenuConfig = reactive<IContextMenuConfig>({ type: "group" });
-
-// 模态框相关状态
-const showGroupModal = ref(false);
-const modalType = ref<"rename" | "color">("rename");
-const modalTitle = ref("");
-const newGroupTitle = ref("");
-const selectedColor = ref("grey");
-const currentGroupId = ref<number | null>(null);
 
 // 拖拽相关状态
 const dragData = ref<{
@@ -324,74 +303,48 @@ const closeContextMenu = () => {
 
 // 分组操作
 const handleRenameGroup = (newTitle?: string) => {
-  if (contextMenuConfig.groupId) {
-    if (newTitle && newTitle.trim()) {
-      // 直接更新分组名称，无需模态框
-      const group = customTabGroups.value.find(
-        (g) => g.id === contextMenuConfig.groupId
-      );
-      if (group) {
-        const trimmedTitle = newTitle.trim();
-        group.title = trimmedTitle;
+  if (contextMenuConfig.groupId && newTitle && newTitle.trim()) {
+    // 直接更新分组名称
+    const group = customTabGroups.value.find(
+      (g) => g.id === contextMenuConfig.groupId
+    );
+    if (group) {
+      const trimmedTitle = newTitle.trim();
+      group.title = trimmedTitle;
 
-        // 同步更新Chrome的分组标题
-        try {
-          chrome.tabGroups.update(contextMenuConfig.groupId, {
-            title: trimmedTitle,
-          });
-          console.log("分组重命名成功:", trimmedTitle);
-        } catch (error) {
-          console.error("更新Chrome分组标题失败:", error);
-        }
+      // 同步更新Chrome的分组标题
+      try {
+        chrome.tabGroups.update(contextMenuConfig.groupId, {
+          title: trimmedTitle,
+        });
+        console.log("分组重命名成功:", trimmedTitle);
+      } catch (error) {
+        console.error("更新Chrome分组标题失败:", error);
       }
-      showContextMenu.value = false;
-    } else {
-      // 如果没有传递新标题，保持原来的模态框逻辑（备用）
-      currentGroupId.value = contextMenuConfig.groupId;
-      modalType.value = "rename";
-      modalTitle.value = "重命名分组";
-
-      // 设置当前分组标题作为初始值
-      const group = customTabGroups.value.find(
-        (g) => g.id === contextMenuConfig.groupId
-      );
-      if (group) {
-        newGroupTitle.value = group.title || "";
-      }
-
-      showGroupModal.value = true;
-      showContextMenu.value = false;
     }
+    showContextMenu.value = false;
   }
 };
 
 const handleChangeGroupColor = (color?: string) => {
-  if (contextMenuConfig.groupId) {
-    if (color) {
-      // 直接修改颜色，无需模态框
-      const group = customTabGroups.value.find(
-        (g) => g.id === contextMenuConfig.groupId
-      );
-      if (group) {
-        group.color = color;
+  if (contextMenuConfig.groupId && color) {
+    // 直接修改颜色
+    const group = customTabGroups.value.find(
+      (g) => g.id === contextMenuConfig.groupId
+    );
+    console.log("group: 修改颜色", group);
+    if (group) {
+      group.color = color;
 
-        // 同步更新Chrome的分组颜色
-        try {
-          chrome.tabGroups.update(contextMenuConfig.groupId, {
-            color: color as chrome.tabGroups.Color,
-          });
-          console.log("分组颜色修改成功:", color);
-        } catch (error) {
-          console.error("更新Chrome分组颜色失败:", error);
-        }
+      // 同步更新Chrome的分组颜色
+      try {
+        chrome.tabGroups.update(contextMenuConfig.groupId, {
+          color: color as chrome.tabGroups.Color,
+        });
+        console.log("分组颜色修改成功:", color);
+      } catch (error) {
+        console.error("更新Chrome分组颜色失败:", error);
       }
-    } else {
-      // 保持原来的模态框逻辑作为备用
-      currentGroupId.value = contextMenuConfig.groupId;
-      modalType.value = "color";
-      modalTitle.value = "修改分组颜色";
-      showGroupModal.value = true;
-      showContextMenu.value = false;
     }
   }
 };
@@ -716,44 +669,6 @@ const handleDrop = async (
     dragOverGroupId.value = null;
     dragData.value = null;
   }
-};
-
-// 模态框操作
-const closeGroupModal = () => {
-  showGroupModal.value = false;
-  newGroupTitle.value = "";
-  selectedColor.value = "grey";
-  currentGroupId.value = null;
-};
-
-const confirmGroupAction = async (data?: {
-  newTitle?: string;
-  selectedColor?: string;
-}) => {
-  if (currentGroupId.value) {
-    const group = customTabGroups.value.find(
-      (g) => g.id === currentGroupId.value
-    );
-    if (group) {
-      if (modalType.value === "rename" && data?.newTitle?.trim()) {
-        const newTitle = data.newTitle.trim();
-        group.title = newTitle;
-
-        // 同步更新Chrome的分组标题
-        try {
-          await chrome.tabGroups.update(currentGroupId.value, {
-            title: newTitle,
-          });
-          console.log("分组重命名成功:", newTitle);
-        } catch (error) {
-          console.error("更新Chrome分组标题失败:", error);
-        }
-      } else if (modalType.value === "color" && data?.selectedColor) {
-        group.color = data.selectedColor;
-      }
-    }
-  }
-  closeGroupModal();
 };
 
 /**
