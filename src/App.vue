@@ -355,13 +355,34 @@ const handleUngroupTabs = async () => {
       (g) => g.id === contextMenuConfig.groupId
     );
     if (group) {
-      // 将分组中的标签页移动到未分组
-      ungroupedTabs.value.push(...group.tabs);
-      // 移除分组
-      customTabGroups.value = customTabGroups.value.filter(
-        (g) => g.id !== contextMenuConfig.groupId
-      );
-      showContextMenu.value = false;
+      try {
+        // 使用Chrome API取消分组
+        const tabIds = group.tabs
+          .map((tab) => tab.id)
+          .filter(Boolean) as number[];
+
+        if (tabIds.length > 0) {
+          await chrome.tabs.ungroup(tabIds);
+          console.log("分组取消成功，标签页已移动到未分组");
+        }
+
+        // 更新本地状态
+        ungroupedTabs.value.push(...group.tabs);
+        customTabGroups.value = customTabGroups.value.filter(
+          (g) => g.id !== contextMenuConfig.groupId
+        );
+
+        showContextMenu.value = false;
+
+        // 刷新标签页数据以确保状态同步
+        await getAllTabs();
+      } catch (error) {
+        console.error("取消分组失败:", error);
+        // 如果Chrome API调用失败，回滚本地状态
+        ungroupedTabs.value = ungroupedTabs.value.filter(
+          (tab) => !group.tabs.includes(tab)
+        );
+      }
     }
   }
 };

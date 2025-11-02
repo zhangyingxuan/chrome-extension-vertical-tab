@@ -2,7 +2,7 @@
   <div class="custom-group-view">
     <!-- 分组列表 -->
     <div
-      v-for="(group, index) in groups"
+      v-for="group in groups"
       :key="group.id"
       class="group-panel"
       :class="{
@@ -13,10 +13,10 @@
       :data-group-id="group.id"
       :style="{
         '--group-border-color': ColorUtils.getColorValue(group.color),
-        '--group-bg-color': ColorUtils.getColorValue(group.color) + '0D',
+        '--group-bg-color': ColorUtils.getColorValue(group.color),
         '--group-border-bottom-color': ColorUtils.getColorValue(group.color),
         '--group-border-active-color': ColorUtils.getColorValue(group.color),
-        '--group-bg-active-color': ColorUtils.getColorValue(group.color) + '26',
+        '--group-bg-active-color': ColorUtils.getColorValue(group.color),
         '--group-border-bottom-active-color': ColorUtils.getColorValue(
           group.color
         ),
