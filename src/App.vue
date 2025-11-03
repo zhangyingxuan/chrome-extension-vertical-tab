@@ -272,8 +272,6 @@ const toggleGroupCollapse = async (groupId: number) => {
 
 // 右键菜单处理
 const handleGroupContextMenu = (event: MouseEvent, group: ICustomTabGroup) => {
-  console.log("handleGroupContextMenu:321", group);
-
   contextMenuPosition.x = event.clientX;
   contextMenuPosition.y = event.clientY;
   contextMenuConfig.type = "group";
@@ -288,8 +286,6 @@ const handleTabContextMenu = (
   tab: chrome.tabs.Tab,
   group?: ICustomTabGroup
 ) => {
-  console.log("handleTabContextMenu123:", group, event.clientX, event.clientY);
-
   contextMenuPosition.x = event.clientX;
   contextMenuPosition.y = event.clientY;
   contextMenuConfig.type = "tab";
