@@ -103,10 +103,6 @@ const emit = defineEmits<{
   close: [];
 }>();
 
-// 窗口尺寸
-const windowWidth = ref(0);
-const windowHeight = ref(0);
-
 // 重命名相关状态
 const renameInputRef = ref<HTMLInputElement | null>(null);
 const editingGroupTitle = ref("");
@@ -118,70 +114,54 @@ const selectedColor = ref("grey");
 const menuRef = ref<HTMLElement | null>(null);
 const adjustedPosition = ref({ x: 0, y: 0 });
 
-// 防抖函数
-const debounce = (fn: Function, delay: number) => {
-  let timeoutId: number;
-  return (...args: any[]) => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => fn(...args), delay);
-  };
-};
-
-// 更新窗口尺寸（防抖处理）
-const updateWindowSize = debounce(() => {
-  windowWidth.value = window.innerWidth;
-  windowHeight.value = window.innerHeight;
-  adjustMenuPosition();
-}, 100);
-
-// 边界检测和位置调整函数（优化版）
+// 精确边界检测和位置调整函数
 const adjustMenuPosition = () => {
   if (!menuRef.value) return;
 
-  const menuRect = menuRef.value.getBoundingClientRect();
   const { x: originalX, y: originalY } = props.position;
+  const { innerWidth: winWidth, innerHeight: winHeight } = window;
 
-  // 计算调整后的位置（使用更简洁的边界检测）
+  // 使用实际DOM尺寸进行精确计算
+  const menuRect = menuRef.value.getBoundingClientRect();
+  const menuWidth = menuRect.width;
+  const menuHeight = menuRect.height;
+
+  // 计算边界安全距离
+  const safeMargin = 10;
+
+  // 精确计算最终位置，确保菜单完全在可视区域内
   const adjustedX = Math.max(
-    10,
-    Math.min(originalX, windowWidth.value - menuRect.width - 10)
+    safeMargin,
+    Math.min(originalX, winWidth - menuWidth - safeMargin)
   );
   const adjustedY = Math.max(
-    10,
-    Math.min(originalY, windowHeight.value - menuRect.height - 10)
+    safeMargin,
+    Math.min(originalY, winHeight - menuHeight - safeMargin)
   );
 
-  // 只有当位置确实发生变化时才更新
-  if (
-    adjustedPosition.value.x !== adjustedX ||
-    adjustedPosition.value.y !== adjustedY
-  ) {
-    adjustedPosition.value = { x: adjustedX, y: adjustedY };
-  }
+  adjustedPosition.value = { x: adjustedX, y: adjustedY };
 };
 
-// 监听位置变化，重新计算边界（优化watch使用）
-watch(() => props.position, adjustMenuPosition, { immediate: true });
+// 监听位置变化，立即调整位置
+watch(
+  () => props.position,
+  () => {
+    adjustMenuPosition();
+  },
+  { immediate: true, deep: true }
+);
 
 // 统一初始化函数
 const initMenuState = () => {
   if (props.config.type === "group" && props.config.groupId) {
-    // 设置重命名输入框值
     editingGroupTitle.value = props.config.groupTitle || "";
-
-    // 设置颜色选择状态
     selectedColor.value = props.config.groupColor || "grey";
 
-    // 延迟聚焦输入框
-    nextTick(() => {
-      if (renameInputRef.value) {
-        renameInputRef.value.focus();
-      }
-    });
+    nextTick(() => renameInputRef.value?.focus());
   }
 };
 
-// 监听配置变化（简化watch，避免深度监听）
+// 监听配置变化
 watch(() => props.config.type, initMenuState, { immediate: true });
 
 // 保存分组重命名
@@ -205,16 +185,11 @@ const selectColor = (color: string) => {
   emit("close");
 };
 
-// 复制文本到剪贴板
+// 优化复制文本到剪贴板
 const copyToClipboard = async (text: string) => {
   try {
     await navigator.clipboard.writeText(text);
-    console.log(
-      "已复制到剪贴板:",
-      text.substring(0, 50) + (text.length > 50 ? "..." : "")
-    );
-  } catch (err) {
-    console.error("复制失败:", err);
+  } catch {
     // 降级方案
     const textArea = document.createElement("textarea");
     textArea.value = text;
@@ -245,9 +220,9 @@ const copyTabTitle = async () => {
 
 // 获取当前标签页信息
 const getCurrentTab = async () => {
-  if (!props.config.tabId) return null;
-  const tabs = await chrome.tabs.query({});
-  return tabs.find((t) => t.id === props.config.tabId);
+  return props.config.tabId
+    ? (await chrome.tabs.query({})).find((t) => t.id === props.config.tabId)
+    : null;
 };
 
 // 在新标签页打开
@@ -286,43 +261,27 @@ const handleClickOutside = () => {
   emit("close");
 };
 
-// 自定义指令：点击外部关闭
+// 简化点击外部关闭指令
 const vClickOutside = {
   mounted(el: HTMLElement, binding: any) {
-    const clickOutsideEvent = function (event: MouseEvent) {
-      if (!el.contains(event.target as Node)) {
-        binding.value(event);
-      }
+    const handler = (event: MouseEvent) => {
+      !el.contains(event.target as Node) && binding.value(event);
     };
-    (el as any).clickOutsideEvent = clickOutsideEvent;
-    document.addEventListener("click", clickOutsideEvent);
+    (el as any).clickOutsideHandler = handler;
+    document.addEventListener("click", handler);
   },
   unmounted(el: HTMLElement) {
-    const clickOutsideEvent = (el as any).clickOutsideEvent;
-    if (clickOutsideEvent) {
-      document.removeEventListener("click", clickOutsideEvent);
-    }
+    document.removeEventListener("click", (el as any).clickOutsideHandler);
   },
 };
 
-// 组件挂载时一次性初始化
+// 组件挂载时初始化
 onMounted(() => {
-  // 一次性获取窗口尺寸
-  windowWidth.value = window.innerWidth;
-  windowHeight.value = window.innerHeight;
-
-  // 添加防抖的resize监听
-  window.addEventListener("resize", updateWindowSize);
-
-  // 初始化菜单状态并延迟边界检测
   initMenuState();
-  setTimeout(() => {
+  // 使用nextTick确保DOM已渲染完成后再调整位置
+  nextTick(() => {
     adjustMenuPosition();
-  }, 50);
-});
-
-onUnmounted(() => {
-  window.removeEventListener("resize", updateWindowSize);
+  });
 });
 </script>
 
@@ -341,140 +300,117 @@ onUnmounted(() => {
   padding: 8px 0;
   font-size: 13px;
   backdrop-filter: blur(10px);
-  animation: fadeIn 0.15s ease-out;
+  animation: fadeIn 0.1s ease-out;
   box-sizing: border-box;
   overflow: hidden;
+  will-change: transform, opacity;
+}
 
-  .rename-input-container {
-    padding: 8px 16px;
+.rename-input-container {
+  padding: 8px 16px;
+}
+.rename-input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--border-color-light);
+  border-radius: 4px;
+  background: var(--bg-color-secondary);
+  color: var(--font-color);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+.rename-input:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.1);
+}
+.rename-input::placeholder {
+  color: var(--font-color-secondary);
+}
 
-    .rename-input {
-      width: 100%;
-      padding: 6px 8px;
-      border: 1px solid var(--border-color-light);
-      border-radius: 4px;
-      background: var(--bg-color-secondary);
-      color: var(--font-color);
-      font-size: 13px;
-      outline: none;
-      transition: border-color 0.2s ease;
+.color-picker-section {
+  padding: 8px 16px;
+}
+.color-picker-grid {
+  display: flex;
+  gap: 6px;
+  justify-content: space-between;
+}
+.color-circle {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid transparent;
+  transition: all 0.15s ease;
+}
+.color-circle:hover {
+  transform: scale(1.1);
+  border-color: var(--border-color);
+}
+.color-circle.active {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.2);
+}
+.color-checkmark {
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
 
-      &:focus {
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.1);
-      }
+.menu-section {
+  max-height: 350px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  cursor: pointer;
+  color: var(--font-color);
+  transition: all 0.12s ease-out;
+  gap: 12px;
+}
+.menu-item:hover {
+  background-color: var(--tab-hover-color);
+  transform: translateX(1px);
+}
+.menu-item:active {
+  transform: translateX(0);
+}
+.menu-divider {
+  height: 1px;
+  background-color: var(--border-color-light);
+  margin: 6px 0;
+  opacity: 0.5;
+}
 
-      &::placeholder {
-        color: var(--font-color-secondary);
-      }
-    }
-  }
-
-  .color-picker-section {
-    padding: 8px 16px;
-
-    .color-picker-label {
-      font-size: 12px;
-      color: var(--font-color-secondary);
-      margin-bottom: 8px;
-      font-weight: 500;
-    }
-
-    .color-picker-grid {
-      display: flex;
-      gap: 6px;
-      justify-content: space-between;
-
-      .color-circle {
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 2px solid transparent;
-        transition: all 0.2s ease;
-        position: relative;
-
-        &:hover {
-          transform: scale(1.1);
-          border-color: var(--border-color);
-        }
-
-        &.active {
-          border-color: var(--primary-color);
-          box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.2);
-        }
-
-        .color-checkmark {
-          color: white;
-          font-size: 12px;
-          font-weight: bold;
-          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-        }
-      }
-    }
-  }
-
-  .menu-section {
-    max-height: 350px;
-    overflow-y: auto;
-    overflow-x: hidden;
-
-    .menu-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px 16px;
-      cursor: pointer;
-      color: var(--font-color);
-      transition: all 0.2s ease;
-      gap: 12px;
-
-      &:hover {
-        background-color: var(--tab-hover-color);
-        transform: translateX(2px);
-      }
-
-      &:active {
-        transform: translateX(0);
-      }
-    }
-
-    .menu-divider {
-      height: 1px;
-      background-color: var(--border-color-light);
-      margin: 6px 0;
-      opacity: 0.5;
-    }
-  }
-
-  // 滚动条样式
-  .menu-section::-webkit-scrollbar {
-    width: 4px;
-  }
-
-  .menu-section::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .menu-section::-webkit-scrollbar-thumb {
-    background: var(--border-color-light);
-    border-radius: 2px;
-  }
-
-  .menu-section::-webkit-scrollbar-thumb:hover {
-    background: var(--border-color);
-  }
+.menu-section::-webkit-scrollbar {
+  width: 4px;
+}
+.menu-section::-webkit-scrollbar-track {
+  background: transparent;
+}
+.menu-section::-webkit-scrollbar-thumb {
+  background: var(--border-color-light);
+  border-radius: 2px;
+}
+.menu-section::-webkit-scrollbar-thumb:hover {
+  background: var(--border-color);
 }
 
 @keyframes fadeIn {
-  from {
+  0% {
     opacity: 0;
-    transform: scale(0.95) translateY(-4px);
+    transform: scale(0.98) translateY(-2px);
   }
-  to {
+  100% {
     opacity: 1;
     transform: scale(1) translateY(0);
   }

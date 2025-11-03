@@ -120,7 +120,6 @@ const getFilteredTabs = (domainItem: any): any[] => {
 .domain-group-view {
   overflow-x: hidden;
   height: 100%;
-  padding-bottom: var(--footer-bar-height);
 
   &::-webkit-scrollbar,
   &::-webkit-scrollbar-thumb {

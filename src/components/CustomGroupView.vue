@@ -21,7 +21,7 @@
           group.color
         ),
       }"
-      @contextmenu.prevent="$emit('group-context-menu', $event, group)"
+      @contextmenu.stop.prevent="$emit('group-context-menu', $event, group)"
       @dragover.prevent="$emit('drag-over', $event, group)"
       @dragenter.prevent="$emit('drag-enter', $event, group)"
       @dragleave.prevent="$emit('drag-leave', $event, group)"
@@ -68,7 +68,9 @@
             }"
             :data-favicon="tab.favIconUrl"
             @click="$emit('click-tab', tab)"
-            @contextmenu.prevent="$emit('tab-context-menu', $event, tab, group)"
+            @contextmenu.stop.prevent="
+              $emit('tab-context-menu', $event, tab, group)
+            "
             draggable="true"
             @dragstart="$emit('drag-start', $event, tab, group)"
             @dragend="$emit('drag-end', $event)"
@@ -155,7 +157,7 @@
           }"
           :data-favicon="tab.favIconUrl"
           @click="$emit('click-tab', tab)"
-          @contextmenu.prevent="
+          @contextmenu.stop.prevent="
             $emit('tab-context-menu', $event, tab, undefined)
           "
           draggable="true"
@@ -309,7 +311,6 @@ const getFilteredUngroupedTabs = (): any[] => {
 .custom-group-view {
   overflow-x: hidden;
   height: 100%;
-  padding-bottom: var(--footer-bar-height);
 
   &::-webkit-scrollbar {
     width: 3px;
