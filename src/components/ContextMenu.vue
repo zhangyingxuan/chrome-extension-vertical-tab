@@ -142,24 +142,28 @@ const adjustMenuPosition = () => {
   adjustedPosition.value = { x: adjustedX, y: adjustedY };
 };
 
-// 监听位置变化，立即调整位置
-watch(
-  () => props.position,
-  () => {
-    adjustMenuPosition();
-  },
-  { immediate: true, deep: true }
-);
-
 // 统一初始化函数
 const initMenuState = () => {
+  console.log("initMenuState:", props.config);
   if (props.config.type === "group" && props.config.groupId) {
     editingGroupTitle.value = props.config.groupTitle || "";
     selectedColor.value = props.config.groupColor || "grey";
 
+    console.log("initMenuState:", props.config.groupId);
     nextTick(() => renameInputRef.value?.focus());
   }
 };
+
+// 监听位置变化，立即调整位置
+watch(
+  () => props.position,
+  () => {
+    console.log("位置变化:", props.position);
+    initMenuState();
+    adjustMenuPosition();
+  },
+  { immediate: true, deep: true }
+);
 
 // 监听配置变化
 watch(() => props.config.type, initMenuState, { immediate: true });

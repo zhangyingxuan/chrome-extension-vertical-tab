@@ -38,16 +38,6 @@
       </h3>
       <transition name="slide-down">
         <ul v-show="!shouldGroupBeCollapsed(group)" class="tab-list">
-          <!-- 拖拽位置指示器 - 顶部 -->
-          <div
-            v-if="
-              sortPositionHint.groupId === group.id &&
-              sortPositionHint.position === 'before' &&
-              sortPositionHint.index === 0
-            "
-            class="drop-indicator before"
-          ></div>
-
           <li
             v-for="(tab, jdx) in getFilteredTabs(group)"
             :key="jdx"
@@ -97,16 +87,6 @@
               </button>
             </div>
           </li>
-
-          <!-- 拖拽位置指示器 - 底部 -->
-          <div
-            v-if="
-              sortPositionHint.groupId === group.id &&
-              sortPositionHint.position === 'after' &&
-              sortPositionHint.index === getFilteredTabs(group).length
-            "
-            class="drop-indicator after"
-          ></div>
         </ul>
       </transition>
     </div>
@@ -127,16 +107,6 @@
         ({{ getFilteredUngroupedTabs().length }})
       </p>
       <ul class="tab-list">
-        <!-- 拖拽位置指示器 - 顶部 -->
-        <div
-          v-if="
-            sortPositionHint.groupId === -1 &&
-            sortPositionHint.position === 'before' &&
-            sortPositionHint.index === 0
-          "
-          class="drop-indicator before"
-        ></div>
-
         <li
           v-for="(tab, index) in getFilteredUngroupedTabs()"
           :key="index"
@@ -182,16 +152,6 @@
             </button>
           </div>
         </li>
-
-        <!-- 拖拽位置指示器 - 底部 -->
-        <div
-          v-if="
-            sortPositionHint.groupId === -1 &&
-            sortPositionHint.position === 'after' &&
-            sortPositionHint.index === getFilteredUngroupedTabs().length
-          "
-          class="drop-indicator after"
-        ></div>
       </ul>
     </div>
 
@@ -331,6 +291,7 @@ const getFilteredUngroupedTabs = (): any[] => {
 
   // 未分组区域不显示边框
   &.ungrouped-panel {
+    position: relative;
     border: none;
     border-radius: 0;
     margin: 0;

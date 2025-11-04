@@ -444,10 +444,12 @@ const handleCloseTabFromMenu = async () => {
 
 // 新增：键盘快捷键支持
 const handleKeyDown = (event: KeyboardEvent) => {
+  console.log("closeContextMenu");
   if (!showContextMenu.value) return;
 
   // ESC键关闭菜单
   if (event.key === "Escape") {
+    console.log("Escape");
     closeContextMenu();
     event.preventDefault();
     event.stopPropagation();
@@ -603,37 +605,6 @@ const clearSortPositionHint = () => {
   sortPositionHint.groupId = null;
   sortPositionHint.index = -1;
   sortPositionHint.position = "before";
-};
-
-// 新增：处理分组内排序
-const handleGroupInternalSortWrapper = async (
-  event: DragEvent,
-  draggedTab: any,
-  group: ICustomTabGroup
-) => {
-  try {
-    await handleGroupInternalSort(event, draggedTab, group);
-    showSortSuccessFeedback(group.id);
-    await getAllTabs();
-  } catch (error) {
-    console.error("分组内排序失败:", error);
-    showSortErrorFeedback();
-  }
-};
-
-// 新增：处理未分组标签页排序
-const handleUngroupedSortWrapper = async (
-  event: DragEvent,
-  draggedTab: any
-) => {
-  try {
-    await handleUngroupedSort(event, draggedTab, ungroupedTabs.value);
-    showSortSuccessFeedback(-1);
-    await getAllTabs();
-  } catch (error) {
-    console.error("未分组排序失败:", error);
-    showSortErrorFeedback();
-  }
 };
 
 const handleDrop = async (
