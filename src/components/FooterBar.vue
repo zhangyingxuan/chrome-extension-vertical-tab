@@ -125,6 +125,7 @@ footer {
       width: 25%;
       text-align: right;
       display: flex;
+      justify-content: right;
     }
     button {
       background-color: transparent;
