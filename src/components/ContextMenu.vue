@@ -17,7 +17,7 @@
           v-model="editingGroupTitle"
           class="rename-input"
           placeholder="输入分组名称"
-          @keydown.enter="saveGroupRename"
+          @blur="saveGroupRename"
           @keydown.escape="cancelGroupRename"
         />
       </div>
@@ -144,12 +144,10 @@ const adjustMenuPosition = () => {
 
 // 统一初始化函数
 const initMenuState = () => {
-  console.log("initMenuState:", props.config);
   if (props.config.type === "group" && props.config.groupId) {
     editingGroupTitle.value = props.config.groupTitle || "";
     selectedColor.value = props.config.groupColor || "grey";
 
-    console.log("initMenuState:", props.config.groupId);
     nextTick(() => renameInputRef.value?.focus());
   }
 };

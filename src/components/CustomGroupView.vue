@@ -34,7 +34,7 @@
       >
         <p class="title">{{ group.title || "未命名分组" }}</p>
         <p class="count">({{ getFilteredTabs(group).length }})</p>
-        <i class="right-arrow iconfont icon-arrow-down"></i>
+        <CaretDownIcon class="right-arrow" />
       </h3>
       <transition name="slide-down">
         <ul v-show="!shouldGroupBeCollapsed(group)" class="tab-list">
@@ -83,7 +83,7 @@
             </div>
             <div class="right-actions">
               <button title="关闭标签页" @click.stop="$emit('close-tab', tab)">
-                <i class="iconfont icon-close-circle"></i>
+                <CloseCircleIcon />
               </button>
             </div>
           </li>
@@ -148,7 +148,7 @@
           </div>
           <div class="right-actions">
             <button title="关闭标签页" @click.stop="$emit('close-tab', tab)">
-              <i class="iconfont icon-close-circle"></i>
+              <CloseCircleIcon />
             </button>
           </div>
         </li>
@@ -170,6 +170,7 @@
 <script lang="ts" setup>
 import { ICustomTabGroup } from "../type";
 import { ColorUtils } from "../utils/colorUtils";
+import { CaretDownIcon, CloseCircleIcon } from "tdesign-icons-vue-next";
 
 interface Props {
   groups: ICustomTabGroup[];

@@ -21,6 +21,17 @@ export async function getAllDomainTabs(): Promise<ITabGroup[]> {
     }
   });
 
+  // 按域名字母顺序排序标签页
+  // Object.keys(listMap).forEach(domain => {
+  //   if (listMap[domain]) {
+  //     listMap[domain].sort((a, b) => {
+  //       const titleA = a.title?.toLowerCase() || "";
+  //       const titleB = b.title?.toLowerCase() || "";
+  //       return titleA.localeCompare(titleB);
+  //     });
+  //   }
+  // });
+
   return Object.keys(listMap).map((domain) => ({
     domain,
     tabs: listMap[domain],
@@ -474,4 +485,106 @@ export function changeActiveTab(activeInfo: { tabId: number; windowId: number })
 export function openDomainFold(): void {
   // 这个函数在App.vue中由事件监听器调用，这里只做占位导出
   console.log('openDomainFold called');
+}
+
+/**
+ * 按域名对分组进行排序，并同步修改Chrome标签页顺序
+ */
+export async function sortDomainGroups(groups: ITabGroup[], sortType: "default" | "domain"): Promise<ITabGroup[]> {
+  // 先对分组进行排序
+  let sortedGroups: ITabGroup[];
+  if (sortType === "domain") {
+    // 按域名字母顺序排序
+    sortedGroups = [...groups].sort((a, b) => a.domain.localeCompare(b.domain));
+  } else {
+    // 默认排序：按标签页数量降序，然后按域名排序
+    sortedGroups = [...groups].sort((a, b) => {
+      const aCount = a.tabs?.length || 0;
+      const bCount = b.tabs?.length || 0;
+      if (bCount !== aCount) {
+        return bCount - aCount;
+      }
+      return a.domain.localeCompare(b.domain);
+    });
+  }
+
+  // 同步修改Chrome标签页顺序
+  await syncChromeTabOrder(sortedGroups);
+
+  return sortedGroups;
+}
+
+/**
+ * 同步Chrome标签页顺序到实际标签页
+ */
+async function syncChromeTabOrder(sortedGroups: ITabGroup[]): Promise<void> {
+  try {
+    // 获取当前窗口的所有标签页
+    const allTabs = await chrome.tabs.query({ currentWindow: true });
+
+    // 收集所有需要移动的标签页ID和对应的目标索引
+    const tabMoves: { tabId: number; index: number }[] = [];
+    let currentIndex = 0;
+
+    // 按照排序后的分组顺序，为每个标签页分配新的索引
+    for (const group of sortedGroups) {
+      if (group.tabs && group.tabs.length > 0) {
+        // 对分组内的标签页按标题排序（保持原有逻辑）
+        const sortedTabs = [...group.tabs].sort((a, b) => {
+          const titleA = a.title?.toLowerCase() || "";
+          const titleB = b.title?.toLowerCase() || "";
+          return titleA.localeCompare(titleB);
+        });
+
+        // 为分组内的每个标签页分配索引
+        for (const tab of sortedTabs) {
+          if (tab.id) {
+            tabMoves.push({
+              tabId: tab.id,
+              index: currentIndex
+            });
+            currentIndex++;
+          }
+        }
+      }
+    }
+
+    // 批量移动标签页到新位置
+    for (const move of tabMoves) {
+      try {
+        await chrome.tabs.move(move.tabId, { index: move.index });
+      } catch (error) {
+        console.warn(`移动标签页 ${move.tabId} 失败:`, error);
+      }
+    }
+
+    console.log(`已同步 ${tabMoves.length} 个标签页的顺序`);
+  } catch (error) {
+    console.error("同步Chrome标签页顺序失败:", error);
+  }
+}
+
+/**
+ * 解除所有分组，将所有标签页移动到未分组状态
+ */
+export async function ungroupAllTabs(): Promise<void> {
+  try {
+    // 获取当前窗口的所有标签页
+    const allTabs = await chrome.tabs.query({ currentWindow: true });
+
+    // 收集所有有分组的标签页ID
+    const groupedTabIds = allTabs
+      .filter(tab => tab.groupId !== -1)
+      .map(tab => tab.id)
+      .filter(Boolean) as number[];
+
+    if (groupedTabIds.length > 0) {
+      // 批量解除分组
+      await chrome.tabs.ungroup(groupedTabIds);
+      console.log(`已解除 ${groupedTabIds.length} 个标签页的分组`);
+    }
+  } catch (error) {
+    console.error("解除所有分组失败:", error);
+    throw error;
+  }
 }

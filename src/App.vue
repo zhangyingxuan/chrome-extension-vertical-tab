@@ -1,21 +1,8 @@
 <template>
   <div class="tabs-tree">
-    <!-- 域名分组模式 -->
-    <DomainGroupView
-      v-if="groupType === 'domain'"
-      :tabList="showTabList"
-      :activeDomain="activeDomain"
-      :currDomain="currDomain"
-      :activeTabId="activeTabId"
-      :searchKeywords="searchData.keywords"
-      @active-domain="handleActiveDomain"
-      @click-tab="handleClickTab"
-      @close-tab="handleCloseTab"
-    />
-
     <!-- 自定义分组模式 -->
     <CustomGroupView
-      v-else-if="groupType === 'custom'"
+      v-if="groupType === 'custom'"
       :groups="showCustomGroups"
       :ungroupedTabs="showUngroupedTabs"
       :activeGroupId="activeGroupId"
@@ -39,10 +26,25 @@
       @drag-over-tab="handleDragOverTab"
     />
 
+    <!-- 域名分组模式 -->
+    <DomainGroupView
+      v-else-if="groupType === 'domain'"
+      :tabList="showTabList"
+      :activeDomain="activeDomain"
+      :currDomain="currDomain"
+      :activeTabId="activeTabId"
+      :searchKeywords="searchData.keywords"
+      @active-domain="handleActiveDomain"
+      @click-tab="handleClickTab"
+      @close-tab="handleCloseTab"
+    />
+
     <FooterBar
       :groupType="groupType"
+      :sortType="domainSortType"
       @change="handleSearch"
       @change-group-type="handleGroupTypeChange"
+      @change-sort="handleDomainSortChange"
     />
 
     <!-- 搜索统计信息 -->
@@ -93,23 +95,36 @@ import {
   toggleGroupCollapse as toggleGroupCollapseUtil,
   handleDropOperation,
   handleGroupInternalSort,
-  handleUngroupedSort, // 新增导入
+  handleUngroupedSort,
   showDragSuccessFeedback,
   showDragErrorFeedback,
   showSortSuccessFeedback,
   showSortErrorFeedback,
+  sortDomainGroups,
+  ungroupAllTabs,
 } from "./utils/tabManager";
 
 // 状态管理
-const groupType = ref("domain");
+const groupType = ref("custom");
 const activeTabId = ref(0);
 const activeDomain = ref("");
 const currDomain = ref("");
+
+// 新增：域名排序类型
+const domainSortType = ref<"default" | "domain">("default");
 
 // TabGroup相关状态
 const customTabGroups = ref<ICustomTabGroup[]>([]);
 const ungroupedTabs = ref<chrome.tabs.Tab[]>([]);
 const activeGroupId = ref<number | null>(null);
+
+// 新增：存储自定义分组状态的变量
+const customGroupsState = ref<{
+  groups: ICustomTabGroup[];
+  ungroupedTabs: chrome.tabs.Tab[];
+  activeGroupId: number | null;
+  timestamp: number;
+} | null>(null);
 
 // 右键菜单相关状态
 const showContextMenu = ref(false);
@@ -139,18 +154,36 @@ const searchData = reactive({
 // 计算属性 - 优化搜索性能
 const showTabList = computed<ITabGroup[]>(() => {
   const keywords = searchData.keywords.toLowerCase();
-  if (!keywords) return tabList.value;
+  let filteredList = tabList.value;
 
-  return tabList.value.filter((item) => {
-    const domainMatch = item.domain.toLowerCase().includes(keywords);
-    const tabMatch = item.tabs?.some((tab) => {
-      const title = tab?.title?.toLowerCase() || "";
-      const url = tab?.url?.toLowerCase() || "";
-      return title.includes(keywords) || url.includes(keywords);
+  if (keywords) {
+    filteredList = tabList.value.filter((item) => {
+      const domainMatch = item.domain.toLowerCase().includes(keywords);
+      const tabMatch = item.tabs?.some((tab) => {
+        const title = tab?.title?.toLowerCase() || "";
+        const url = tab?.url?.toLowerCase() || "";
+        return title.includes(keywords) || url.includes(keywords);
+      });
+
+      return domainMatch || tabMatch;
     });
+  }
 
-    return domainMatch || tabMatch;
-  });
+  // 新增：根据排序类型排序（这里只做本地排序，Chrome标签页顺序在排序变更时同步）
+  if (domainSortType.value === "domain") {
+    // 按域名字母顺序排序
+    return [...filteredList].sort((a, b) => a.domain.localeCompare(b.domain));
+  } else {
+    // 默认排序：按标签页数量降序，然后按域名排序
+    return [...filteredList].sort((a, b) => {
+      const aCount = a.tabs?.length || 0;
+      const bCount = b.tabs?.length || 0;
+      if (bCount !== aCount) {
+        return bCount - aCount;
+      }
+      return a.domain.localeCompare(b.domain);
+    });
+  }
 });
 
 // 新增：自定义分组模式下的搜索计算属性
@@ -207,9 +240,77 @@ const searchStats = computed(() => {
 });
 
 // 事件处理函数
-function handleGroupTypeChange(type: string) {
+async function handleGroupTypeChange(type: string) {
   groupType.value = type;
-  getAllTabs();
+
+  // 保存分组类型到本地存储
+  chrome.storage.local.set({ [groupTypeStoreKey]: type });
+
+  // 处理分组模式切换逻辑
+  if (type === "domain") {
+    // 从自定义分组模式切换到域名分组模式
+    try {
+      // 存储当前自定义分组状态到变量
+      customGroupsState.value = {
+        groups: [...customTabGroups.value],
+        ungroupedTabs: [...ungroupedTabs.value],
+        activeGroupId: activeGroupId.value,
+        timestamp: Date.now(),
+      };
+      console.log("已存储自定义分组状态到变量");
+
+      // 解除所有分组
+      await ungroupAllTabs();
+
+      // 按当前排序方式重排标签页
+      const domainGroups = await getAllDomainTabs();
+      if (domainGroups.length > 0) {
+        await sortDomainGroups(domainGroups, domainSortType.value);
+      }
+
+      console.log("已切换到域名分组模式，并解除所有分组");
+    } catch (error) {
+      console.error("切换到域名分组模式失败:", error);
+    }
+  } else {
+    // 从域名分组模式切换到自定义分组模式
+    if (customGroupsState.value) {
+      // 使用变量中存储的状态还原自定义分组
+      customTabGroups.value = [...customGroupsState.value.groups];
+      ungroupedTabs.value = [...customGroupsState.value.ungroupedTabs];
+      activeGroupId.value = customGroupsState.value.activeGroupId;
+      console.log("已从变量还原自定义分组状态");
+      // 还原分组情况，同步至chrome
+      try {
+        await syncCustomGroupsToChrome();
+        console.log("已同步自定义分组状态至Chrome");
+      } catch (error) {
+        console.error("同步自定义分组状态至Chrome失败:", error);
+      }
+    } else {
+      // 如果没有存储的状态，获取当前标签页状态
+      console.log("没有存储的自定义分组状态，使用当前Chrome状态");
+    }
+  }
+
+  // 刷新标签页数据
+  await refreshAllTabsData();
+}
+
+// 新增：域名排序变更处理
+async function handleDomainSortChange(sortType: "default" | "domain") {
+  domainSortType.value = sortType;
+
+  // 同步修改Chrome标签页顺序
+  if (groupType.value === "domain" && tabList.value.length > 0) {
+    try {
+      await sortDomainGroups(tabList.value, sortType);
+      // 刷新标签页数据以获取最新的顺序
+      await refreshAllTabsData();
+    } catch (error) {
+      console.error("同步Chrome标签页顺序失败:", error);
+    }
+  }
 }
 
 function handleSearch(data: ISearchData) {
@@ -375,7 +476,7 @@ const handleUngroupTabs = async () => {
         showContextMenu.value = false;
 
         // 刷新标签页数据以确保状态同步
-        await getAllTabs();
+        await refreshAllTabsData();
       } catch (error) {
         console.error("取消分组失败:", error);
         // 如果Chrome API调用失败，回滚本地状态
@@ -403,7 +504,7 @@ const handleCloseGroup = async () => {
         (g) => g.id !== contextMenuConfig.groupId
       );
       showContextMenu.value = false;
-      getAllTabs();
+      refreshAllTabsData();
     }
   }
 };
@@ -429,7 +530,7 @@ const handleMoveToNewGroup = async () => {
       console.error("移动到新分组失败:", error);
     } finally {
       showContextMenu.value = false;
-      await getAllTabs();
+      await refreshAllTabsData();
     }
   }
 };
@@ -438,7 +539,7 @@ const handleCloseTabFromMenu = async () => {
   if (contextMenuConfig.tabId) {
     await chrome.tabs.remove(contextMenuConfig.tabId);
     showContextMenu.value = false;
-    getAllTabs();
+    refreshAllTabsData();
   }
 };
 
@@ -652,7 +753,7 @@ const handleDrop = async (
 
   try {
     await handleDropOperation(dragData.value, targetGroup);
-    await getAllTabs();
+    await refreshAllTabsData();
     showDragSuccessFeedback(targetGroupId);
   } catch (error) {
     console.error("拖拽移动标签页失败:", error);
@@ -669,11 +770,11 @@ const handleDrop = async (
 const handleCloseTab = async (tab: chrome.tabs.Tab) => {
   if (!tab.id) return;
   await chrome.tabs.remove(tab.id);
-  getAllTabs();
+  refreshAllTabsData();
 };
 
 // 获取所有标签页数据
-async function getAllTabs() {
+async function refreshAllTabsData() {
   if (groupType.value === "domain") {
     tabList.value = await getAllDomainTabs();
   } else {
@@ -694,18 +795,65 @@ const initGroupType = async () => {
   groupType.value = gt || "domain";
 };
 
+/**
+ * 将自定义分组状态同步到Chrome
+ */
+async function syncCustomGroupsToChrome() {
+  try {
+    // 获取当前窗口的所有标签页
+    const allTabs = await chrome.tabs.query({ currentWindow: true });
+
+    // 首先将所有标签页取消分组
+    const tabIds = allTabs.map((tab) => tab.id).filter(Boolean) as number[];
+    if (tabIds.length > 0) {
+      await chrome.tabs.ungroup(tabIds);
+    }
+
+    // 为每个自定义分组创建对应的Chrome分组
+    for (const group of customTabGroups.value) {
+      if (group.tabs.length > 0) {
+        const groupTabIds = group.tabs
+          .map((tab) => tab.id)
+          .filter(Boolean) as number[];
+
+        if (groupTabIds.length > 0) {
+          // 创建分组
+          const chromeGroupId = await chrome.tabs.group({
+            tabIds: groupTabIds,
+          });
+
+          // 更新分组属性
+          await chrome.tabGroups.update(chromeGroupId, {
+            title: group.title,
+            color: group.color as chrome.tabGroups.Color,
+            collapsed: group.collapsed,
+          });
+
+          console.log(`同步分组成功: ${group.title}`);
+        }
+      }
+    }
+
+    console.log("自定义分组状态已成功同步到Chrome");
+  } catch (error) {
+    console.error("同步自定义分组状态到Chrome失败:", error);
+    throw error;
+  }
+}
+
 // 事件监听器
 onMounted(async () => {
   await initGroupType();
+
   // 监听分组类型变化
   chrome.storage.onChanged.addListener((changes) => {
     if (changes[groupTypeStoreKey]) {
       groupType.value = changes[groupTypeStoreKey].newValue;
-      getAllTabs();
+      refreshAllTabsData();
     }
   });
 
-  await getAllTabs();
+  await refreshAllTabsData();
   const acTab = await getActiveTab();
   if (acTab?.id) {
     changeActiveTab({ tabId: acTab.id, windowId: acTab.windowId || 0 });
@@ -723,13 +871,13 @@ onMounted(async () => {
   // TabGroup相关事件监听
   chrome.tabGroups.onCreated.addListener((group) => {
     if (groupType.value === "custom") {
-      getAllTabs();
+      refreshAllTabsData();
     }
   });
 
   chrome.tabGroups.onRemoved.addListener((group) => {
     if (groupType.value === "custom") {
-      getAllTabs();
+      refreshAllTabsData();
     }
   });
 
@@ -746,25 +894,25 @@ onMounted(async () => {
   // 标签页移动到分组事件
   chrome.tabs.onAttached.addListener((tabId, attachInfo) => {
     if (groupType.value === "custom") {
-      getAllTabs();
+      refreshAllTabsData();
     }
   });
 
   chrome.tabs.onDetached.addListener((tabId, detachInfo) => {
     if (groupType.value === "custom") {
-      getAllTabs();
+      refreshAllTabsData();
     }
   });
 
   chrome.tabs.onMoved.addListener((tabId, moveInfo) => {
     if (groupType.value === "custom") {
-      getAllTabs();
+      refreshAllTabsData();
     }
   });
 
   // 现有的标签页事件监听保持不变
   chrome.tabs.onActivated.addListener(async (activeInfo) => {
-    await getAllTabs();
+    await refreshAllTabsData();
     wait(300);
     changeActiveTab({ tabId: activeInfo.tabId, windowId: activeInfo.windowId });
     const tabs = await chrome.tabs.query({ currentWindow: true });
@@ -775,7 +923,7 @@ onMounted(async () => {
   });
 
   chrome.tabs.onCreated.addListener(async (tab) => {
-    await getAllTabs();
+    await refreshAllTabsData();
     if (tab?.id) {
       changeActiveTab({ tabId: tab.id, windowId: tab.windowId || 0 });
     }
@@ -783,7 +931,7 @@ onMounted(async () => {
 
   chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
     if (removeInfo?.isWindowClosing) return;
-    await getAllTabs();
+    await refreshAllTabsData();
     const newAcTab = await getActiveTab();
     if (newAcTab?.id) {
       changeActiveTab({ tabId: newAcTab.id, windowId: newAcTab.windowId || 0 });
@@ -794,7 +942,7 @@ onMounted(async () => {
   });
 
   chrome.tabs.onUpdated.addListener(async (upTabId, changeInfo, tab) => {
-    await getAllTabs();
+    await refreshAllTabsData();
     nextTick(() => {
       if (
         tab.active &&

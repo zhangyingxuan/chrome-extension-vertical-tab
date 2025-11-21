@@ -17,7 +17,7 @@
         />
         <p class="title">{{ item.domain }}</p>
         <p class="count">({{ getFilteredTabs(item).length }})</p>
-        <i class="right-arrow iconfont icon-arrow-down"></i>
+        <CaretDownIcon class="right-arrow" />
       </h3>
       <transition name="slide-down">
         <ul v-show="shouldDomainBeExpanded(item.domain)" class="tab-list">
@@ -31,7 +31,7 @@
             <div class="left-title" :data-tab-id="tab?.id">{{ tab.title }}</div>
             <div class="right-actions">
               <button title="关闭标签页" @click.stop="$emit('close-tab', tab)">
-                <i class="iconfont icon-close-circle"></i>
+                <CloseCircleIcon />
               </button>
             </div>
           </li>
@@ -52,6 +52,7 @@
 
 <script lang="ts" setup>
 import { ref, computed } from "vue";
+import { CaretDownIcon, CloseCircleIcon } from "tdesign-icons-vue-next";
 
 interface Props {
   tabList: any[];

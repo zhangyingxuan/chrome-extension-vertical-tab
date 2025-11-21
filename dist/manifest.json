@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "侧边栏Tab管理器",
-  "version": "1.1",
+  "version": "1.0",
   "description": "一个支持分组、拖动排序和固定标签的侧边栏Tab管理器",
   "permissions": ["tabs", "tabGroups", "storage", "sidePanel"],
   "side_panel": {
