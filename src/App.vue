@@ -239,7 +239,7 @@ const searchStats = computed(() => {
   }
 });
 
-// 事件处理函数
+// 分组类型变化，调整排序
 async function handleGroupTypeChange(type: string) {
   groupType.value = type;
 
@@ -250,6 +250,8 @@ async function handleGroupTypeChange(type: string) {
   if (type === "domain") {
     // 从自定义分组模式切换到域名分组模式
     try {
+      // 如果当前排序方式为默认排序，则不进行tab重排排序
+      if (domainSortType.value === "default") return;
       // 存储当前自定义分组状态到变量
       customGroupsState.value = {
         groups: [...customTabGroups.value],
@@ -277,17 +279,12 @@ async function handleGroupTypeChange(type: string) {
       customTabGroups.value = [...customGroupsState.value.groups];
       ungroupedTabs.value = [...customGroupsState.value.ungroupedTabs];
       activeGroupId.value = customGroupsState.value.activeGroupId;
-      console.log("已从变量还原自定义分组状态");
       // 还原分组情况，同步至chrome
       try {
         await syncCustomGroupsToChrome();
-        console.log("已同步自定义分组状态至Chrome");
       } catch (error) {
         console.error("同步自定义分组状态至Chrome失败:", error);
       }
-    } else {
-      // 如果没有存储的状态，获取当前标签页状态
-      console.log("没有存储的自定义分组状态，使用当前Chrome状态");
     }
   }
 
