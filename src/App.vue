@@ -78,7 +78,7 @@ import {
   IContextMenuConfig,
 } from "./type";
 import { wait } from "./utils/index";
-import { groupTypeStoreKey } from "./config";
+import { groupTypeStoreKey, domainSortTypeStoreKey } from "./config";
 
 // 导入组件
 import DomainGroupView from "./components/DomainGroupView.vue";
@@ -110,7 +110,7 @@ const activeTabId = ref(0);
 const activeDomain = ref("");
 const currDomain = ref("");
 
-// 新增：域名排序类型
+// 域名排序类型
 const domainSortType = ref<"default" | "domain">("default");
 
 // TabGroup相关状态
@@ -118,13 +118,14 @@ const customTabGroups = ref<ICustomTabGroup[]>([]);
 const ungroupedTabs = ref<chrome.tabs.Tab[]>([]);
 const activeGroupId = ref<number | null>(null);
 
-// 新增：存储自定义分组状态的变量
+// 存储自定义分组状态的变量
 const customGroupsState = ref<{
   groups: ICustomTabGroup[];
   ungroupedTabs: chrome.tabs.Tab[];
   activeGroupId: number | null;
   timestamp: number;
 } | null>(null);
+const isUngroupAllTabs = ref<boolean>(false);
 
 // 右键菜单相关状态
 const showContextMenu = ref(false);
@@ -138,7 +139,7 @@ const dragData = ref<{
 } | null>(null);
 const dragOverGroupId = ref<number | null>(null);
 
-// 新增：拖拽排序位置提示状态
+// 拖拽排序位置提示状态
 const sortPositionHint = reactive({
   groupId: null as number | null,
   index: -1,
@@ -169,7 +170,7 @@ const showTabList = computed<ITabGroup[]>(() => {
     });
   }
 
-  // 新增：根据排序类型排序（这里只做本地排序，Chrome标签页顺序在排序变更时同步）
+  // 根据排序类型排序（这里只做本地排序，Chrome标签页顺序在排序变更时同步）
   if (domainSortType.value === "domain") {
     // 按域名字母顺序排序
     return [...filteredList].sort((a, b) => a.domain.localeCompare(b.domain));
@@ -186,7 +187,7 @@ const showTabList = computed<ITabGroup[]>(() => {
   }
 });
 
-// 新增：自定义分组模式下的搜索计算属性
+// 自定义分组模式下的搜索计算属性
 const showCustomGroups = computed(() => {
   const keywords = searchData.keywords.toLowerCase();
   if (!keywords) return customTabGroups.value;
@@ -206,7 +207,7 @@ const showCustomGroups = computed(() => {
   });
 });
 
-// 新增：未分组标签页的搜索计算属性
+// 未分组标签页的搜索计算属性
 const showUngroupedTabs = computed(() => {
   const keywords = searchData.keywords.toLowerCase();
   if (!keywords) return ungroupedTabs.value;
@@ -218,7 +219,7 @@ const showUngroupedTabs = computed(() => {
   });
 });
 
-// 新增：搜索结果的统计信息
+// 搜索结果的统计信息
 const searchStats = computed(() => {
   if (!searchData.keywords) return null;
 
@@ -239,6 +240,25 @@ const searchStats = computed(() => {
   }
 });
 
+/**
+ * 解除分组，并存储当前自定义分组状态到变量
+ */
+async function saveCustomGroupStateAndUngroupAllTabs() {
+  // 存储当前自定义分组状态到变量
+  customGroupsState.value = {
+    groups: [...customTabGroups.value],
+    ungroupedTabs: [...ungroupedTabs.value],
+    activeGroupId: activeGroupId.value,
+    timestamp: Date.now(),
+  };
+  console.log("已存储自定义分组状态到变量");
+
+  if (!isUngroupAllTabs.value) {
+    // 解除所有分组
+    isUngroupAllTabs.value = await ungroupAllTabs();
+  }
+}
+
 // 分组类型变化，调整排序
 async function handleGroupTypeChange(type: string) {
   groupType.value = type;
@@ -250,20 +270,10 @@ async function handleGroupTypeChange(type: string) {
   if (type === "domain") {
     // 从自定义分组模式切换到域名分组模式
     try {
+      console.log(domainSortType.value);
       // 如果当前排序方式为默认排序，则不进行tab重排排序
       if (domainSortType.value === "default") return;
-      // 存储当前自定义分组状态到变量
-      customGroupsState.value = {
-        groups: [...customTabGroups.value],
-        ungroupedTabs: [...ungroupedTabs.value],
-        activeGroupId: activeGroupId.value,
-        timestamp: Date.now(),
-      };
-      console.log("已存储自定义分组状态到变量");
-
-      // 解除所有分组
-      await ungroupAllTabs();
-
+      await saveCustomGroupStateAndUngroupAllTabs();
       // 按当前排序方式重排标签页
       const domainGroups = await getAllDomainTabs();
       if (domainGroups.length > 0) {
@@ -274,14 +284,14 @@ async function handleGroupTypeChange(type: string) {
     }
   } else {
     // 从域名分组模式切换到自定义分组模式
-    if (customGroupsState.value) {
+    if (customGroupsState.value && isUngroupAllTabs.value) {
       // 使用变量中存储的状态还原自定义分组
       customTabGroups.value = [...customGroupsState.value.groups];
       ungroupedTabs.value = [...customGroupsState.value.ungroupedTabs];
       activeGroupId.value = customGroupsState.value.activeGroupId;
       // 还原分组情况，同步至chrome
       try {
-        await syncCustomGroupsToChrome();
+        isUngroupAllTabs.value = await syncCustomGroupsToChrome();
       } catch (error) {
         console.error("同步自定义分组状态至Chrome失败:", error);
       }
@@ -292,13 +302,21 @@ async function handleGroupTypeChange(type: string) {
   await refreshAllTabsData();
 }
 
-// 新增：域名排序变更处理
+// 域名排序变更处理
 async function handleDomainSortChange(sortType: "default" | "domain") {
   domainSortType.value = sortType;
+
+  // 保存排序类型到本地存储
+  chrome.storage.local.set({ [domainSortTypeStoreKey]: sortType });
 
   // 同步修改Chrome标签页顺序
   if (groupType.value === "domain" && tabList.value.length > 0) {
     try {
+      if (!isUngroupAllTabs.value) {
+        // 解除所有分组
+        await saveCustomGroupStateAndUngroupAllTabs();
+      }
+
       await sortDomainGroups(tabList.value, sortType);
       // 刷新标签页数据以获取最新的顺序
       await refreshAllTabsData();
@@ -539,7 +557,6 @@ const handleMoveToNewGroup = async () => {
             await chrome.tabs.move(groupTab.id, {
               index: firstUngroupedTabIndex,
             });
-            console.log(`已将新分组"${groupTitle}"移动到未分组标签之前`);
           }
         }
       } catch (moveError) {
@@ -565,7 +582,7 @@ const handleCloseTabFromMenu = async () => {
   }
 };
 
-// 新增：键盘快捷键支持
+// 键盘快捷键支持
 const handleKeyDown = (event: KeyboardEvent) => {
   console.log("closeContextMenu");
   if (!showContextMenu.value) return;
@@ -663,7 +680,7 @@ const handleDragOver = (event: DragEvent, group: ICustomTabGroup | null) => {
   }
 };
 
-// 新增：拖拽进入标签页（用于排序）
+// 拖拽进入标签页（用于排序）
 const handleDragEnterTab = (
   event: DragEvent,
   tab: any,
@@ -685,7 +702,7 @@ const handleDragEnterTab = (
   sortPositionHint.position = position;
 };
 
-// 新增：拖拽离开标签页
+// 拖拽离开标签页
 const handleDragLeaveTab = (
   event: DragEvent,
   tab: any,
@@ -699,7 +716,7 @@ const handleDragLeaveTab = (
   }
 };
 
-// 新增：拖拽在标签页上移动
+// 拖拽在标签页上移动
 const handleDragOverTab = (
   event: DragEvent,
   tab: any,
@@ -723,7 +740,7 @@ const handleDragOverTab = (
   sortPositionHint.position = position;
 };
 
-// 新增：清除位置提示
+// 清除位置提示
 const clearSortPositionHint = () => {
   sortPositionHint.groupId = null;
   sortPositionHint.index = -1;
@@ -758,7 +775,7 @@ const handleDrop = async (
     return;
   }
 
-  // 新增：如果源分组和目标分组都是未分组（null），执行未分组标签页排序
+  // 如果源分组和目标分组都是未分组（null），执行未分组标签页排序
   if (sourceGroup === null && targetGroup === null) {
     try {
       await handleUngroupedSort(event, tab, ungroupedTabs.value);
@@ -811,10 +828,16 @@ async function refreshAllTabsData() {
   }
 }
 
+// 初始化分组类型和排序类型
 const initGroupType = async () => {
   const obj = await chrome.storage.local.get(groupTypeStoreKey);
   const gt = obj[groupTypeStoreKey];
   groupType.value = gt || "domain";
+
+  // 初始化排序类型
+  const sortObj = await chrome.storage.local.get(domainSortTypeStoreKey);
+  const sortType = sortObj[domainSortTypeStoreKey];
+  domainSortType.value = sortType || "default";
 };
 
 /**
@@ -839,6 +862,8 @@ async function syncCustomGroupsToChrome() {
         : allTabs.length;
 
     // 为每个自定义分组创建对应的Chrome分组，并调整位置
+    let currentIndex = firstUngroupedTabIndex;
+
     for (const group of customTabGroups.value) {
       if (group.tabs.length > 0) {
         const groupTabIds = group.tabs
@@ -846,7 +871,20 @@ async function syncCustomGroupsToChrome() {
           .filter(Boolean) as number[];
 
         if (groupTabIds.length > 0) {
-          console.log("groupTabIds===", groupTabIds, group.tabs);
+          // 在创建分组之前，先移动标签页到正确位置
+          // 这样可以避免分组创建后标签页位置冲突的问题
+          try {
+            await chrome.tabs.move(groupTabIds, {
+              index: currentIndex,
+            });
+            console.log(
+              `已将分组"${group.title}"的标签页移动到起始位置 ${currentIndex}`
+            );
+          } catch (moveError) {
+            console.warn(`移动分组"${group.title}"标签页失败:`, moveError);
+            // 移动失败不影响后续流程
+          }
+
           // 创建分组
           const chromeGroupId = await chrome.tabs.group({
             tabIds: groupTabIds,
@@ -859,34 +897,15 @@ async function syncCustomGroupsToChrome() {
             collapsed: group.collapsed,
           });
 
-          // 将分组移动到未分组标签之前
-          try {
-            // 获取分组中的第一个标签页
-            const groupTabs = await chrome.tabs.query({
-              groupId: chromeGroupId,
-            });
-            if (groupTabs.length > 0) {
-              const firstGroupTab: any = groupTabs[0];
-
-              // 如果分组不在未分组标签之前，则移动它
-              // 将同分组内所有标签移动到一起
-              if (firstGroupTab.index > firstUngroupedTabIndex) {
-                await chrome.tabs.move(firstGroupTab.id, {
-                  index: firstUngroupedTabIndex,
-                });
-                console.log(`已将分组"${group.title}"移动到未分组标签之前`);
-              }
-            }
-          } catch (moveError) {
-            console.warn(`移动分组"${group.title}"失败:`, moveError);
-            // 移动失败不影响整体同步流程
-          }
+          // 更新下一个分组的位置（当前分组的大小）
+          currentIndex += groupTabIds.length;
         }
       }
     }
+    return false;
   } catch (error) {
     console.error("同步自定义分组状态到Chrome失败:", error);
-    throw error;
+    return true;
   }
 }
 
@@ -899,6 +918,15 @@ onMounted(async () => {
     if (changes[groupTypeStoreKey]) {
       groupType.value = changes[groupTypeStoreKey].newValue;
       refreshAllTabsData();
+    }
+
+    // 监听排序类型变化
+    if (changes[domainSortTypeStoreKey]) {
+      domainSortType.value = changes[domainSortTypeStoreKey].newValue;
+      // 如果当前是域名分组模式，需要重新排序
+      if (groupType.value === "domain") {
+        handleDomainSortChange(domainSortType.value);
+      }
     }
   });
 

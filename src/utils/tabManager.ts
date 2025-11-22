@@ -537,7 +537,7 @@ async function syncChromeTabOrder(sortedGroups: ITabGroup[]): Promise<void> {
 /**
  * 解除所有分组，将所有标签页移动到未分组状态
  */
-export async function ungroupAllTabs(): Promise<void> {
+export async function ungroupAllTabs(): Promise<boolean> {
   try {
     // 获取当前窗口的所有标签页
     const allTabs = await chrome.tabs.query({ currentWindow: true });
@@ -553,8 +553,9 @@ export async function ungroupAllTabs(): Promise<void> {
       await chrome.tabs.ungroup(groupedTabIds);
       console.log(`已解除 ${groupedTabIds.length} 个标签页的分组`);
     }
+    return true;
   } catch (error) {
     console.error("解除所有分组失败:", error);
-    throw error;
+    return false;
   }
 }
