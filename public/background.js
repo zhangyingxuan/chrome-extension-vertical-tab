@@ -36,10 +36,3 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
       });
   }
 });
-
-// 错误处理：检查side panel API是否可用
-chrome.runtime.onStartup.addListener(() => {
-  if (!chrome.sidePanel) {
-    console.error("Side panel API is not available in this Chrome version");
-  }
-});

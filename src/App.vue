@@ -267,8 +267,6 @@ async function handleGroupTypeChange(type: string) {
       if (domainGroups.length > 0) {
         await sortDomainGroups(domainGroups, domainSortType.value);
       }
-
-      console.log("已切换到域名分组模式，并解除所有分组");
     } catch (error) {
       console.error("切换到域名分组模式失败:", error);
     }
@@ -513,6 +511,14 @@ const handleCloseGroup = async () => {
 const handleMoveToNewGroup = async () => {
   if (contextMenuConfig.tabId) {
     try {
+      // 获取当前窗口的所有标签页和未分组标签页的位置
+      const allTabs = await chrome.tabs.query({ currentWindow: true });
+      const ungroupedTabs = allTabs.filter((tab) => tab.groupId === -1);
+      const firstUngroupedTabIndex =
+        ungroupedTabs.length > 0
+          ? Math.min(...ungroupedTabs.map((tab) => tab.index))
+          : allTabs.length;
+
       // 创建新分组
       const tabId = contextMenuConfig.tabId;
       const group = await chrome.tabs.group({ tabIds: [tabId] });
@@ -523,6 +529,25 @@ const handleMoveToNewGroup = async () => {
         title: groupTitle,
         color: "grey",
       });
+
+      // 将新分组移动到未分组标签之前
+      try {
+        // 获取分组中的标签页
+        const groupTabs = await chrome.tabs.query({ groupId: group });
+        if (groupTabs.length > 0) {
+          const groupTab: any = groupTabs[0];
+
+          // 如果分组不在未分组标签之前，则移动它
+          if (groupTab.index > firstUngroupedTabIndex) {
+            await chrome.tabs.move(groupTab.id, {
+              index: firstUngroupedTabIndex,
+            });
+            console.log(`已将新分组"${groupTitle}"移动到未分组标签之前`);
+          }
+        }
+      } catch (moveError) {
+        console.warn(`移动新分组"${groupTitle}"失败:`, moveError);
+      }
 
       // 显示成功提示
       console.log("标签页已移动到新分组");
@@ -809,7 +834,14 @@ async function syncCustomGroupsToChrome() {
       await chrome.tabs.ungroup(tabIds);
     }
 
-    // 为每个自定义分组创建对应的Chrome分组
+    // 获取未分组标签页的位置信息
+    const ungroupedTabs = allTabs.filter((tab) => tab.groupId === -1);
+    const firstUngroupedTabIndex =
+      ungroupedTabs.length > 0
+        ? Math.min(...ungroupedTabs.map((tab) => tab.index))
+        : allTabs.length;
+
+    // 为每个自定义分组创建对应的Chrome分组，并调整位置
     for (const group of customTabGroups.value) {
       if (group.tabs.length > 0) {
         const groupTabIds = group.tabs
@@ -817,6 +849,7 @@ async function syncCustomGroupsToChrome() {
           .filter(Boolean) as number[];
 
         if (groupTabIds.length > 0) {
+          console.log("groupTabIds===", groupTabIds, group.tabs);
           // 创建分组
           const chromeGroupId = await chrome.tabs.group({
             tabIds: groupTabIds,
@@ -829,12 +862,31 @@ async function syncCustomGroupsToChrome() {
             collapsed: group.collapsed,
           });
 
-          console.log(`同步分组成功: ${group.title}`);
+          // 将分组移动到未分组标签之前
+          try {
+            // 获取分组中的第一个标签页
+            const groupTabs = await chrome.tabs.query({
+              groupId: chromeGroupId,
+            });
+            if (groupTabs.length > 0) {
+              const firstGroupTab: any = groupTabs[0];
+
+              // 如果分组不在未分组标签之前，则移动它
+              // 将同分组内所有标签移动到一起
+              if (firstGroupTab.index > firstUngroupedTabIndex) {
+                await chrome.tabs.move(firstGroupTab.id, {
+                  index: firstUngroupedTabIndex,
+                });
+                console.log(`已将分组"${group.title}"移动到未分组标签之前`);
+              }
+            }
+          } catch (moveError) {
+            console.warn(`移动分组"${group.title}"失败:`, moveError);
+            // 移动失败不影响整体同步流程
+          }
         }
       }
     }
-
-    console.log("自定义分组状态已成功同步到Chrome");
   } catch (error) {
     console.error("同步自定义分组状态到Chrome失败:", error);
     throw error;

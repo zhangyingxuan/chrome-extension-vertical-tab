@@ -21,17 +21,6 @@ export async function getAllDomainTabs(): Promise<ITabGroup[]> {
     }
   });
 
-  // 按域名字母顺序排序标签页
-  // Object.keys(listMap).forEach(domain => {
-  //   if (listMap[domain]) {
-  //     listMap[domain].sort((a, b) => {
-  //       const titleA = a.title?.toLowerCase() || "";
-  //       const titleB = b.title?.toLowerCase() || "";
-  //       return titleA.localeCompare(titleB);
-  //     });
-  //   }
-  // });
-
   return Object.keys(listMap).map((domain) => ({
     domain,
     tabs: listMap[domain],
@@ -471,21 +460,6 @@ export function wait(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-/**
- * 改变活动标签页
- */
-export function changeActiveTab(activeInfo: { tabId: number; windowId: number }): void {
-  // 这个函数在App.vue中由事件监听器调用，这里只做占位导出
-  console.log('changeActiveTab called:', activeInfo);
-}
-
-/**
- * 打开域名折叠
- */
-export function openDomainFold(): void {
-  // 这个函数在App.vue中由事件监听器调用，这里只做占位导出
-  console.log('openDomainFold called');
-}
 
 /**
  * 按域名对分组进行排序，并同步修改Chrome标签页顺序
@@ -519,9 +493,6 @@ export async function sortDomainGroups(groups: ITabGroup[], sortType: "default" 
  */
 async function syncChromeTabOrder(sortedGroups: ITabGroup[]): Promise<void> {
   try {
-    // 获取当前窗口的所有标签页
-    const allTabs = await chrome.tabs.query({ currentWindow: true });
-
     // 收集所有需要移动的标签页ID和对应的目标索引
     const tabMoves: { tabId: number; index: number }[] = [];
     let currentIndex = 0;
@@ -558,7 +529,6 @@ async function syncChromeTabOrder(sortedGroups: ITabGroup[]): Promise<void> {
       }
     }
 
-    console.log(`已同步 ${tabMoves.length} 个标签页的顺序`);
   } catch (error) {
     console.error("同步Chrome标签页顺序失败:", error);
   }

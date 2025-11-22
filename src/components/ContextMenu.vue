@@ -17,7 +17,7 @@
           v-model="editingGroupTitle"
           class="rename-input"
           placeholder="输入分组名称"
-          @blur="saveGroupRename"
+          @keydown.enter="saveGroupRename"
           @keydown.escape="cancelGroupRename"
         />
       </div>
