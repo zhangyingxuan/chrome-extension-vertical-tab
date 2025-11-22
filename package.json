@@ -1,0 +1,29 @@
+{
+  "name": "chrome-extension-vertical-tab",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "watch": "vue-tsc --noEmit && vite build --watch",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@vitejs/plugin-vue-jsx": "^4.1.2",
+    "tdesign-icons-vue-next": "^0.4.1",
+    "vite-svg-loader": "^5.1.0",
+    "vue": "^3.4.21"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.320",
+    "@vitejs/plugin-vue": "^5.0.4",
+    "less": "^4.2.0",
+    "lodash-es": "^4.17.21",
+    "postcss-less": "^6.0.0",
+    "typescript": "^5.4.4",
+    "vite": "^5.2.8",
+    "vue-tsc": "^2.0.10"
+  },
+  "description": "侧边栏垂直标签页管理"
+}

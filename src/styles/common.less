@@ -1,0 +1,89 @@
+* {
+  box-sizing: border-box;
+}
+:root[theme="dark"] {
+  --footer-bar-height: 70px;
+  --bg-color: #000;
+  --font-color: #fff;
+  --domain-hover-color: #333;
+  --tab-hover-color: #666;
+  --border-color: #ddd;
+  --color-input-placeholder: #bbb;
+  --button-bg-color: #333;
+  --button-hover-bg-color: #555;
+  --secondary-font-color: #bbb;
+  --tab-active-bg-color: #444;
+
+  // 拖拽相关颜色变量
+  --primary-color: #4a90e2;
+  --primary-hover-color: #5492d8;
+  --primary-color-light: rgba(74, 144, 226, 0.2);
+  --primary-color-rgb: 74, 144, 226;
+
+  // 新增：边框样式变量
+  --border-color-light: #444;
+  --border-color-hover: #666;
+  --border-color-ultralight: #222;
+  --bg-color-secondary: #111;
+  --bg-color-tertiary: #1a1a1a;
+}
+:root[theme="light"] {
+  --footer-bar-height: 70px;
+  --bg-color: #fff;
+  --font-color: #000;
+  --domain-hover-color: #ccc;
+  --tab-hover-color: #ddd;
+  --border-color: #ccc;
+  --color-input-placeholder: #666;
+  --button-bg-color: #f5f5f5;
+  --button-hover-bg-color: #e0e0e0;
+  --secondary-font-color: #666;
+  --tab-active-bg-color: #f0f0f0;
+
+  // 拖拽相关颜色变量
+  --primary-color: #1976d2;
+  --primary-hover-color: #2879c9;
+  --primary-color-light: rgba(25, 118, 210, 0.1);
+  --primary-color-rgb: 25, 118, 210;
+
+  // 新增：边框样式变量
+  --border-color-light: #e0e0e0;
+  --border-color-hover: #bdbdbd;
+  --border-color-ultralight: #f5f5f5;
+  --bg-color-secondary: #fafafa;
+  --bg-color-tertiary: #f0f0f0;
+}
+
+// 拖拽排序相关颜色变量
+:root {
+  --drag-success-color: rgba(52, 168, 83, 0.1);
+  --drag-error-color: rgba(234, 67, 53, 0.2);
+}
+
+// 暗色主题下的拖拽排序颜色
+@media (prefers-color-scheme: dark) {
+  :root {
+    --drag-success-color: rgba(129, 199, 132, 0.15);
+    --drag-error-color: rgba(239, 83, 80, 0.2);
+  }
+}
+ul,
+p,
+li,
+body,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin: 0;
+  padding: 0;
+}
+body {
+  height: 100vh;
+  #app {
+    height: 100vh;
+    background-color: var(--bg-color);
+  }
+}
