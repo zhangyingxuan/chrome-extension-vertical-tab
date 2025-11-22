@@ -5,7 +5,7 @@
         <!-- 域名分组排序控制 -->
         <div v-if="groupType === 'domain'" class="sort-controls">
           <div class="sort-switch" @click="toggleSortType" :title="sortType === 'default' ? '切换到按域名排序' : '切换到默认排序'">
-            <span class="switch-label">{{ sortType === 'default' ? '默认' : '域名' }}</span>
+            <span class="switch-label">排序</span>
             <div class="switch-track" :class="{ active: sortType !== 'default' }">
               <div class="switch-thumb"></div>
             </div>

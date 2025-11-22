@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "侧边栏Tab管理器",
-  "version": "1.0",
+  "version": "1.2.0",
   "description": "一个支持分组、拖动排序和固定标签的侧边栏Tab管理器",
   "permissions": ["tabs", "tabGroups", "storage", "sidePanel"],
   "side_panel": {
@@ -13,8 +13,7 @@
   },
   "icons": {
     "48": "sources/tabs64.png",
-    "128": "sources/tabs128.png",
-    "256": "sources/tabs256.png"
+    "128": "sources/tabs128.png"
   },
   "background": {
     "service_worker": "background.js"
