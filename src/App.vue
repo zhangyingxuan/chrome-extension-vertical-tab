@@ -262,16 +262,12 @@ const searchStats = computed(() => {
 
 // 分组类型变化，调整排序
 async function handleGroupTypeChange(type: string) {
-  groupType.value = type;
-
   // 保存分组类型到本地存储
   chrome.storage.local.set({ [groupTypeStoreKey]: type });
 }
 
 // 域名排序变更处理
 async function handleDomainSortChange(sortType: "default" | "asc" | "desc") {
-  domainSortType.value = sortType;
-
   // 保存排序类型到本地存储
   chrome.storage.local.set({ [domainSortTypeStoreKey]: sortType });
 
@@ -562,6 +558,12 @@ const handleDragStart = (
   group: ICustomTabGroup | null
 ) => {
   if (!tab.id) return;
+
+  // 在自定义分组模式下，当用户开始拖拽标签时，自动取消排序类型，设置为default
+  if (groupType.value === "custom" && domainSortType.value !== "default") {
+    // 保存排序类型到本地存储
+    chrome.storage.local.set({ [domainSortTypeStoreKey]: "default" });
+  }
 
   dragData.value = {
     tab,
@@ -967,10 +969,6 @@ onMounted(async () => {
     // 监听排序类型变化
     if (changes[domainSortTypeStoreKey]) {
       domainSortType.value = changes[domainSortTypeStoreKey].newValue;
-      // 如果当前是域名分组模式，需要重新排序
-      if (groupType.value === "domain") {
-        handleDomainSortChange(domainSortType.value);
-      }
     }
   });
 
