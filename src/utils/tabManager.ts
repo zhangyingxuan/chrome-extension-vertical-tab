@@ -464,12 +464,16 @@ export function wait(ms: number): Promise<void> {
 /**
  * 按域名对分组进行排序，并同步修改Chrome标签页顺序
  */
-export async function sortDomainGroups(groups: ITabGroup[], sortType: "default" | "domain"): Promise<ITabGroup[]> {
+export async function sortDomainGroups(groups: ITabGroup[], sortType: "default" | "asc" | "desc"): Promise<ITabGroup[]> {
   // 先对分组进行排序
   let sortedGroups: ITabGroup[];
-  if (sortType === "domain") {
-    // 按域名字母顺序排序
+
+  if (sortType === "asc") {
+    // 按域名字母顺序升序排序
     sortedGroups = [...groups].sort((a, b) => a.domain.localeCompare(b.domain));
+  } else if (sortType === "desc") {
+    // 按域名字母顺序降序排序
+    sortedGroups = [...groups].sort((a, b) => b.domain.localeCompare(a.domain));
   } else {
     // 默认排序：按标签页数量降序，然后按域名排序
     sortedGroups = [...groups].sort((a, b) => {
@@ -531,31 +535,5 @@ async function syncChromeTabOrder(sortedGroups: ITabGroup[]): Promise<void> {
 
   } catch (error) {
     console.error("同步Chrome标签页顺序失败:", error);
-  }
-}
-
-/**
- * 解除所有分组，将所有标签页移动到未分组状态
- */
-export async function ungroupAllTabs(): Promise<boolean> {
-  try {
-    // 获取当前窗口的所有标签页
-    const allTabs = await chrome.tabs.query({ currentWindow: true });
-
-    // 收集所有有分组的标签页ID
-    const groupedTabIds = allTabs
-      .filter(tab => tab.groupId !== -1)
-      .map(tab => tab.id)
-      .filter(Boolean) as number[];
-
-    if (groupedTabIds.length > 0) {
-      // 批量解除分组
-      await chrome.tabs.ungroup(groupedTabIds);
-      console.log(`已解除 ${groupedTabIds.length} 个标签页的分组`);
-    }
-    return true;
-  } catch (error) {
-    console.error("解除所有分组失败:", error);
-    return false;
   }
 }
