@@ -274,14 +274,15 @@ async function handleDomainSortChange(sortType: "default" | "asc" | "desc") {
   chrome.storage.local.set({ [domainSortTypeStoreKey]: sortType });
 
   // 同步修改Chrome标签页顺序
-  if (groupType.value === "domain" && tabList.value.length > 0) {
-    try {
-      await sortDomainGroups(tabList.value, sortType);
-      // 刷新标签页数据以获取最新的顺序
-      await refreshAllTabsData();
-    } catch (error) {
-      console.error("同步Chrome标签页顺序失败:", error);
-    }
+  if (tabList.value.length === 0) {
+    tabList.value = await getAllDomainTabs();
+  }
+  try {
+    await sortDomainGroups(tabList.value, sortType);
+    // 刷新标签页数据以获取最新的顺序
+    await refreshAllTabsData();
+  } catch (error) {
+    console.error("同步Chrome标签页顺序失败:", error);
   }
 }
 
