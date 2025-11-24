@@ -460,12 +460,66 @@ export function wait(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+/**
+ * 将新标签页移动到相同域名旁
+ */
+export async function moveNewTabToSameDomain(newTab: chrome.tabs.Tab): Promise<void> {
+  if (!newTab.id || !newTab.url) return;
+
+  try {
+    // 获取新标签页的域名
+    const newTabDomain = getDomainOfUrl(newTab.url);
+
+    // 获取当前窗口的所有标签页
+    const allTabs = await chrome.tabs.query({ currentWindow: true });
+
+    // 找到相同域名的标签页
+    const sameDomainTabs = allTabs.filter(tab => {
+      if (!tab.url || tab.id === newTab.id) return false;
+      const tabDomain = getDomainOfUrl(tab.url);
+      return tabDomain === newTabDomain;
+    });
+
+    if (sameDomainTabs.length === 0) {
+      // 如果没有相同域名的标签页，将新标签页移动到末尾
+      const lastTabIndex = allTabs.length - 1;
+      if (newTab.index !== lastTabIndex) {
+        await chrome.tabs.move(newTab.id, { index: lastTabIndex });
+      }
+      return;
+    }
+
+    // 找到相同域名标签页中最后一个的位置
+    const lastSameDomainTab = sameDomainTabs.reduce((last, tab) => {
+      return tab.index > last.index ? tab : last;
+    }, sameDomainTabs[0]);
+
+    // 将新标签页移动到相同域名标签页之后
+    const targetIndex = lastSameDomainTab.index + 1;
+
+    if (newTab.index !== targetIndex) {
+      await chrome.tabs.move(newTab.id, { index: targetIndex });
+    }
+
+  } catch (error) {
+    console.error("移动新标签页到相同域名旁失败:", error);
+  }
+}
 
 /**
- * 按域名对分组进行排序，并同步修改Chrome标签页顺序
+ * 检查标签页是否已加载完成
  */
-export async function sortDomainGroups(groups: ITabGroup[], sortType: "default" | "asc" | "desc"): Promise<ITabGroup[]> {
-  // 先对分组进行排序
+export function isTabLoaded(tab: chrome.tabs.Tab): boolean {
+  return tab.status === 'complete' && !!tab.url && tab.url !== 'chrome://newtab/';
+}
+
+/**
+ * 按域名进行排序，并同步修改Chrome标签页顺序
+ */
+export async function sortDomainGroups(sortType: "default" | "asc" | "desc"): Promise<ITabGroup[]> {
+  // 获取所有标签页数据（域名分组模式）
+  const groups: ITabGroup[] = await getAllDomainTabs();
+
   let sortedGroups: ITabGroup[];
 
   if (sortType === "asc") {

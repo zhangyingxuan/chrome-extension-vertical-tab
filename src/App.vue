@@ -101,6 +101,8 @@ import {
   showSortSuccessFeedback,
   showSortErrorFeedback,
   sortDomainGroups,
+  moveNewTabToSameDomain,
+  isTabLoaded,
 } from "./utils/tabManager";
 
 // 状态管理
@@ -273,12 +275,9 @@ async function handleDomainSortChange(sortType: "default" | "asc" | "desc") {
   // 保存排序类型到本地存储
   chrome.storage.local.set({ [domainSortTypeStoreKey]: sortType });
 
-  // 同步修改Chrome标签页顺序
-  if (tabList.value.length === 0) {
-    tabList.value = await getAllDomainTabs();
-  }
   try {
-    await sortDomainGroups(tabList.value, sortType);
+    // 获取所有的tab
+    await sortDomainGroups(sortType);
     // 刷新标签页数据以获取最新的顺序
     await refreshAllTabsData();
   } catch (error) {
@@ -1049,6 +1048,31 @@ onMounted(async () => {
     if (tab?.id) {
       changeActiveTab({ tabId: tab.id, windowId: tab.windowId || 0 });
     }
+
+    // 如果排序方式为默认，则直接返回
+    if (domainSortType.value === "default") return;
+
+    // 监听标签页更新，当标签页加载完成时自动排序
+    const onTabUpdated = async (
+      tabId: number,
+      changeInfo: chrome.tabs.TabChangeInfo,
+      updatedTab: chrome.tabs.Tab
+    ) => {
+      if (tabId === tab.id && isTabLoaded(updatedTab)) {
+        // 标签页已加载完成，执行自动排序
+        try {
+          await moveNewTabToSameDomain(updatedTab);
+        } catch (error) {
+          console.error("自动排序新标签页失败:", error);
+        }
+
+        // 移除监听器，避免重复执行
+        chrome.tabs.onUpdated.removeListener(onTabUpdated);
+      }
+    };
+
+    // 添加标签页更新监听器
+    chrome.tabs.onUpdated.addListener(onTabUpdated);
   });
 
   chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
