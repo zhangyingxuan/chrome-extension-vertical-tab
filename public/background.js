@@ -5,9 +5,9 @@
 
 // 监听扩展图标点击，打开side panel
 chrome.action.onClicked.addListener((tab) => {
-  chrome.sidePanel.open({ windowId: tab.windowId }).catch((error) => {
-    console.error("Failed to open side panel:", error);
-  });
+  chrome.sidePanel
+    .setPanelBehavior({ openPanelOnActionClick: true })
+    .catch((error) => console.error(error));
 });
 
 // 设置side panel在所有网站上可用

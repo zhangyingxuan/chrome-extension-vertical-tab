@@ -1,14 +1,14 @@
 {
   "manifest_version": 3,
   "name": "侧边栏Tab管理器",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "一个支持分组、拖动排序和固定标签的侧边栏Tab管理器",
   "permissions": ["tabs", "tabGroups", "storage", "sidePanel"],
   "side_panel": {
     "default_path": "index.html"
   },
   "action": {
-    "default_title": "点击打开侧边栏管理标签页",
+    "default_title": "点击切换侧边栏管理展示或隐藏",
     "default_icon": "./sources/tabs128.png"
   },
   "icons": {
