@@ -24,15 +24,15 @@ chrome.runtime.onStartup.addListener(() => {
 });
 
 // 监听标签页更新，确保side panel可用
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (changeInfo.status === "complete" && tab.url) {
-    chrome.sidePanel
-      .setOptions({
-        path: "index.html",
-        enabled: true,
-      })
-      .catch((error) => {
-        console.error("Failed to update side panel options:", error);
-      });
-  }
-});
+// chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+//   if (changeInfo.status === "complete" && tab.url) {
+//     chrome.sidePanel
+//       .setOptions({
+//         path: "index.html",
+//         enabled: true,
+//       })
+//       .catch((error) => {
+//         console.error("Failed to update side panel options:", error);
+//       });
+//   }
+// });

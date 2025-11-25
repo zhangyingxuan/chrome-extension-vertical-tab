@@ -205,7 +205,7 @@ const showCustomGroups = computed(() => {
 
   // 在自定义分组模式下，只有当用户主动选择了排序类型时才应用排序
   // 否则保持用户通过拖拽进行的自定义排序
-  if (groupType.value === "custom" && domainSortType.value !== "default") {
+  if (domainSortType.value !== "default") {
     const sortedGroups = sortCustomGroups(filteredGroups, domainSortType.value);
 
     // 对每个分组内的标签页也进行排序
@@ -232,7 +232,7 @@ const showUngroupedTabs = computed(() => {
   }
 
   // 在自定义分组模式下，只有当用户主动选择了排序类型时才应用排序
-  if (groupType.value === "custom" && domainSortType.value !== "default") {
+  if (domainSortType.value !== "default") {
     return sortUngroupedTabs(filteredTabs, domainSortType.value);
   }
 
@@ -272,7 +272,7 @@ async function handleDomainSortChange(sortType: "default" | "asc" | "desc") {
   chrome.storage.local.set({ [domainSortTypeStoreKey]: sortType });
 
   try {
-    // 获取所有的tab
+    // 按域名排序并同步Chrome标签页顺序
     await sortDomainGroups(sortType);
     // 刷新标签页数据以获取最新的顺序
     await refreshAllTabsData();
@@ -791,14 +791,12 @@ async function refreshAllTabsData() {
 
 // 初始化分组类型和排序类型
 const initGroupType = async () => {
-  const obj = await chrome.storage.local.get(groupTypeStoreKey);
-  const gt = obj[groupTypeStoreKey];
-  groupType.value = gt || "domain";
-
-  // 初始化排序类型
-  const sortObj = await chrome.storage.local.get(domainSortTypeStoreKey);
-  const sortType = sortObj[domainSortTypeStoreKey];
-  domainSortType.value = sortType || "default";
+  const result = await chrome.storage.local.get([
+    groupTypeStoreKey,
+    domainSortTypeStoreKey,
+  ]);
+  groupType.value = result[groupTypeStoreKey] || "domain";
+  domainSortType.value = result[domainSortTypeStoreKey] || "default";
 };
 
 /**

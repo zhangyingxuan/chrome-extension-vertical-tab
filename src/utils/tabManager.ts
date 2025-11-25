@@ -517,33 +517,88 @@ export function isTabLoaded(tab: chrome.tabs.Tab): boolean {
  * 按域名进行排序，并同步修改Chrome标签页顺序
  */
 export async function sortDomainGroups(sortType: "default" | "asc" | "desc"): Promise<ITabGroup[]> {
-  // 获取所有标签页数据（域名分组模式）
-  const groups: ITabGroup[] = await getAllDomainTabs();
+  // 获取所有标签页数据（包括分组信息）
+  const allTabs = await chrome.tabs.query({ currentWindow: true });
+  const allTabGroups = await chrome.tabGroups.query({});
 
-  let sortedGroups: ITabGroup[];
+  // 分离有分组的标签页和未分组的标签页
+  const groupedTabs: chrome.tabs.Tab[] = [];
+  const ungroupedTabs: chrome.tabs.Tab[] = [];
+
+  allTabs.forEach(tab => {
+    if (tab.groupId !== -1 && allTabGroups.some(group => group.id === tab.groupId)) {
+      groupedTabs.push(tab);
+    } else {
+      ungroupedTabs.push(tab);
+    }
+  });
+
+  // 对有分组的标签页按分组ID排序（保持分组内的相对顺序）
+  const sortedGroupedTabs = [...groupedTabs].sort((a, b) => {
+    // 按分组ID排序，有分组的排在最前面
+    if (a.groupId !== b.groupId) {
+      return (a.groupId || 0) - (b.groupId || 0);
+    }
+    // 同一分组内保持原有顺序
+    return a.index - b.index;
+  });
+
+  // 对未分组的标签页按域名分组
+  const ungroupedDomainMap: { [domain: string]: chrome.tabs.Tab[] } = {};
+  ungroupedTabs.forEach(tab => {
+    if (tab.url) {
+      const domain = getDomainOfUrl(tab.url);
+      if (ungroupedDomainMap[domain]) {
+        ungroupedDomainMap[domain].push(tab);
+      } else {
+        ungroupedDomainMap[domain] = [tab];
+      }
+    }
+  });
+
+  // 对未分组的域名分组进行排序
+  let sortedUngroupedDomains = Object.keys(ungroupedDomainMap);
 
   if (sortType === "asc") {
     // 按域名字母顺序升序排序
-    sortedGroups = [...groups].sort((a, b) => a.domain.localeCompare(b.domain));
+    sortedUngroupedDomains = sortedUngroupedDomains.sort((a, b) => a.localeCompare(b));
   } else if (sortType === "desc") {
     // 按域名字母顺序降序排序
-    sortedGroups = [...groups].sort((a, b) => b.domain.localeCompare(a.domain));
+    sortedUngroupedDomains = sortedUngroupedDomains.sort((a, b) => b.localeCompare(a));
   } else {
     // 默认排序：按标签页数量降序，然后按域名排序
-    sortedGroups = [...groups].sort((a, b) => {
-      const aCount = a.tabs?.length || 0;
-      const bCount = b.tabs?.length || 0;
+    sortedUngroupedDomains = sortedUngroupedDomains.sort((a, b) => {
+      const aCount = ungroupedDomainMap[a]?.length || 0;
+      const bCount = ungroupedDomainMap[b]?.length || 0;
       if (bCount !== aCount) {
         return bCount - aCount;
       }
-      return a.domain.localeCompare(b.domain);
+      return a.localeCompare(b);
     });
   }
 
-  // 同步修改Chrome标签页顺序
-  await syncChromeTabOrder(sortedGroups);
+  // 构建最终的标签页顺序：有分组的标签页 + 未分组的标签页（按域名分组排序）
+  const finalTabOrder: chrome.tabs.Tab[] = [...sortedGroupedTabs];
 
-  return sortedGroups;
+  // 添加未分组的标签页，按域名分组顺序
+  sortedUngroupedDomains.forEach(domain => {
+    const domainTabs = ungroupedDomainMap[domain];
+    if (domainTabs) {
+      // 对同一域名内的标签页按标题排序
+      const sortedDomainTabs = [...domainTabs].sort((a, b) => {
+        const titleA = a.title?.toLowerCase() || "";
+        const titleB = b.title?.toLowerCase() || "";
+        return titleA.localeCompare(titleB);
+      });
+      finalTabOrder.push(...sortedDomainTabs);
+    }
+  });
+
+  // 同步修改Chrome标签页顺序
+  await syncChromeTabOrderFromTabs(finalTabOrder);
+
+  // 返回域名分组格式的数据（用于显示）
+  return convertTabsToDomainGroups(finalTabOrder);
 }
 
 /**
@@ -590,4 +645,59 @@ async function syncChromeTabOrder(sortedGroups: ITabGroup[]): Promise<void> {
   } catch (error) {
     console.error("同步Chrome标签页顺序失败:", error);
   }
+}
+
+/**
+ * 根据标签页列表同步Chrome标签页顺序
+ */
+async function syncChromeTabOrderFromTabs(tabs: chrome.tabs.Tab[]): Promise<void> {
+  try {
+    // 收集所有需要移动的标签页ID和对应的目标索引
+    const tabMoves: { tabId: number; index: number }[] = [];
+
+    // 为每个标签页分配新的索引
+    tabs.forEach((tab, index) => {
+      if (tab.id) {
+        tabMoves.push({
+          tabId: tab.id,
+          index: index
+        });
+      }
+    });
+
+    // 批量移动标签页到新位置
+    for (const move of tabMoves) {
+      try {
+        await chrome.tabs.move(move.tabId, { index: move.index });
+      } catch (error) {
+        console.warn(`移动标签页 ${move.tabId} 失败:`, error);
+      }
+    }
+
+  } catch (error) {
+    console.error("同步Chrome标签页顺序失败:", error);
+  }
+}
+
+/**
+ * 将标签页列表转换为域名分组格式
+ */
+function convertTabsToDomainGroups(tabs: chrome.tabs.Tab[]): ITabGroup[] {
+  const domainMap: { [domain: string]: chrome.tabs.Tab[] } = {};
+
+  tabs.forEach(tab => {
+    if (tab.url) {
+      const domain = getDomainOfUrl(tab.url);
+      if (domainMap[domain]) {
+        domainMap[domain].push(tab);
+      } else {
+        domainMap[domain] = [tab];
+      }
+    }
+  });
+
+  return Object.keys(domainMap).map(domain => ({
+    domain,
+    tabs: domainMap[domain],
+  }));
 }
