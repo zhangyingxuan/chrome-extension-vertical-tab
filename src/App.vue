@@ -1049,6 +1049,8 @@ onMounted(async () => {
         // 标签页已加载完成，执行自动排序
         try {
           await moveNewTabToSameDomain(updatedTab);
+          // 刷新所有标签页数据
+          await refreshAllTabsData();
         } catch (error) {
           console.error("自动排序新标签页失败:", error);
         }
