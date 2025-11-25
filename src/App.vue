@@ -386,7 +386,6 @@ const handleRenameGroup = (newTitle?: string) => {
         chrome.tabGroups.update(contextMenuConfig.groupId, {
           title: trimmedTitle,
         });
-        console.log("分组重命名成功:", trimmedTitle);
       } catch (error) {
         console.error("更新Chrome分组标题失败:", error);
       }
@@ -401,7 +400,6 @@ const handleChangeGroupColor = (color?: string) => {
     const group = customTabGroups.value.find(
       (g) => g.id === contextMenuConfig.groupId
     );
-    console.log("group: 修改颜色", group);
     if (group) {
       group.color = color;
 
@@ -410,7 +408,6 @@ const handleChangeGroupColor = (color?: string) => {
         chrome.tabGroups.update(contextMenuConfig.groupId, {
           color: color as chrome.tabGroups.Color,
         });
-        console.log("分组颜色修改成功:", color);
       } catch (error) {
         console.error("更新Chrome分组颜色失败:", error);
       }
@@ -432,7 +429,6 @@ const handleUngroupTabs = async () => {
 
         if (tabIds.length > 0) {
           await chrome.tabs.ungroup(tabIds);
-          console.log("分组取消成功，标签页已移动到未分组");
         }
 
         // 更新本地状态
@@ -517,9 +513,6 @@ const handleMoveToNewGroup = async () => {
       } catch (moveError) {
         console.warn(`移动新分组"${groupTitle}"失败:`, moveError);
       }
-
-      // 显示成功提示
-      console.log("标签页已移动到新分组");
     } catch (error) {
       console.error("移动到新分组失败:", error);
     } finally {
@@ -539,12 +532,10 @@ const handleCloseTabFromMenu = async () => {
 
 // 键盘快捷键支持
 const handleKeyDown = (event: KeyboardEvent) => {
-  console.log("closeContextMenu");
   if (!showContextMenu.value) return;
 
   // ESC键关闭菜单
   if (event.key === "Escape") {
-    console.log("Escape");
     closeContextMenu();
     event.preventDefault();
     event.stopPropagation();

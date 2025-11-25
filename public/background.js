@@ -1,11 +1,10 @@
 // 后台服务工作者，处理扩展生命周期和side panel激活
-chrome.runtime.onInstalled.addListener(() => {
-  console.log("Vertical Tab Extension installed");
-});
+// chrome.runtime.onInstalled.addListener(() => {
+//   console.log("Vertical Tab Extension installed");
+// });
 
 // 监听扩展图标点击，打开side panel
 chrome.action.onClicked.addListener((tab) => {
-  console.log("点击插件工具栏按钮");
   chrome.sidePanel.open({ windowId: tab.windowId }).catch((error) => {
     console.error("Failed to open side panel:", error);
   });

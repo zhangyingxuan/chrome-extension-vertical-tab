@@ -156,7 +156,6 @@ const initMenuState = () => {
 watch(
   () => props.position,
   () => {
-    console.log("位置变化:", props.position);
     initMenuState();
     adjustMenuPosition();
   },
@@ -250,7 +249,6 @@ const reloadTab = async () => {
   if (props.config.tabId) {
     try {
       await chrome.tabs.reload(props.config.tabId);
-      console.log("标签页已重新加载");
     } catch (error) {
       console.error("重新加载标签页失败:", error);
     }
